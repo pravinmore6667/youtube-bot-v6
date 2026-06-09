@@ -83,3 +83,17 @@
 2026-06-04 17:38:04 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
 2026-06-04 17:40:07 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
 2026-06-04 17:44:58 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-09 13:56:29 | INFO    | CeleryWorker         | Starting Celery Analytics Learning Loop Task...
+2026-06-09 13:56:29 | WARNING | CeleryWorker         | Legacy analytics_agent not found, skipping legacy collection.
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Starting autonomous learning cycle...
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Ingesting analytics data from database...
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Analytics data ingested.
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Retraining models...
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | CTR Model retrained. MSE: 7.594153234171358
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Retention Model retrained. MSE: 303.3165232394129
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Virality Model retrained. Accuracy: 0.5
+2026-06-09 13:56:32 | INFO    | agents.autonomous_learning_engine | Replay Model retrained. MAE: 0.2978625260275445
+2026-06-09 13:56:33 | INFO    | agents.autonomous_learning_engine | Engagement Model retrained. MSE: 17.991963451572126
+2026-06-09 13:56:33 | INFO    | agents.autonomous_learning_engine | All models retrained.
+2026-06-09 13:56:33 | INFO    | agents.autonomous_learning_engine | Autonomous learning cycle completed.
+2026-06-09 13:56:33 | INFO    | CeleryWorker         | ✔ Celery Analytics Learning Loop completed.
