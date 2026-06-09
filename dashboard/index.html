@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YouTube AI Bot</title>
+<style>
+:root{--bg:#07090f;--s1:#0e1525;--s2:#111c32;--border:#1a2845;
+  --blue:#00d4ff;--green:#00ff88;--yellow:#ffb800;--red:#ff4444;
+  --purple:#bb44ff;--text:#dde4f0;--muted:#6a7a9a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+/* Header */
+.hdr{background:linear-gradient(135deg,#090d1e,#0d1630);height:58px;padding:0 28px;
+  display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:200}
+.hdr-logo{font-size:1.5rem}
+.hdr h1{font-size:1.1rem;font-weight:700;color:#fff}
+.hdr-sub{font-size:.7rem;color:var(--muted);margin-top:1px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 6px var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* Nav */
+.nav{display:flex;gap:0;padding:0 28px;background:#080b18;
+  border-bottom:1px solid var(--border);overflow-x:auto}
+.nav-btn{padding:13px 18px;font-size:.82rem;font-weight:600;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;
+  background:none;border-top:none;border-left:none;border-right:none}
+.nav-btn:hover{color:#fff}
+.nav-btn.on{color:var(--blue);border-bottom-color:var(--blue)}
+/* Pages */
+.pg{display:none;max-width:1440px;margin:0 auto;padding:24px 28px}
+.pg.on{display:block}
+/* Grid */
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:22px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:800px){.g2,.g3{grid-template-columns:1fr}}
+/* Cards */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card-title{font-size:.88rem;font-weight:700;color:#fff;margin-bottom:14px;
+  display:flex;align-items:center;gap:7px}
+.stat-card{text-align:center;padding:20px 14px}
+.stat-val{font-size:2.2rem;font-weight:800;color:var(--blue);line-height:1.1}
+.stat-lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;
+  border:none;border-radius:8px;font-size:.84rem;font-weight:600;
+  cursor:pointer;transition:all .2s;text-decoration:none}
+.btn:hover{opacity:.82;transform:translateY(-1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-p{background:linear-gradient(135deg,var(--blue),#0055ff);color:#fff}
+.btn-g{background:linear-gradient(135deg,var(--green),#00aa44);color:#000}
+.btn-y{background:linear-gradient(135deg,var(--yellow),#e06000);color:#000}
+.btn-r{background:linear-gradient(135deg,var(--red),#cc0000);color:#fff}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{color:#fff;border-color:#aaa}
+.btn-sm{padding:5px 12px;font-size:.75rem}
+.btn-lg{padding:13px 30px;font-size:.96rem}
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;
+  border-radius:20px;font-size:.7rem;font-weight:600}
+.ok{background:#00ff8818;color:var(--green);border:1px solid #00ff8835}
+.fail{background:#ff444418;color:var(--red);border:1px solid #ff444435}
+.warn{background:#ffb80018;color:var(--yellow);border:1px solid #ffb80035}
+.info{background:#00d4ff15;color:var(--blue);border:1px solid #00d4ff30}
+/* Log console */
+.console{background:#030508;border:1px solid var(--border);border-radius:10px;
+  padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.76rem;
+  line-height:1.7;overflow-y:auto;height:380px;color:#8899bb}
+.console .log-INFO{color:#8899bb}
+.console .log-SUCCESS{color:var(--green)}
+.console .log-WARNING{color:var(--yellow)}
+.console .log-ERROR{color:var(--red)}
+.console .log-DEBUG{color:#555}
+/* Pipeline steps */
+.steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.step{padding:5px 12px;border-radius:7px;font-size:.76rem;font-weight:600;
+  border:1px solid var(--border);color:var(--muted);transition:all .3s}
+.step.running{border-color:var(--yellow);color:var(--yellow);background:#ffb80012;
+  animation:glow .8s infinite alternate}
+.step.success{border-color:var(--green);color:var(--green);background:#00ff8810}
+.step.failed{border-color:var(--red);color:var(--red);background:#ff444410}
+.step.pending{border-color:#222;color:#333}
+@keyframes glow{from{box-shadow:0 0 3px #ffb80033}to{box-shadow:0 0 10px #ffb80088}}
+.step-arrow{color:#222;font-size:.8rem}
+/* Progress bar */
+.bar-wrap{background:#0a0e1a;border-radius:4px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--blue),var(--purple));transition:width .4s}
+.bar-fill.g{background:linear-gradient(90deg,var(--green),var(--blue))}
+/* Table */
+table{width:100%;border-collapse:collapse}
+th{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;
+  padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:10px 10px;font-size:.81rem;border-bottom:1px solid #0a0c14;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#0a0e1a40}
+/* Health grid */
+.health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.health-item{background:var(--s2);border:1px solid var(--border);border-radius:9px;
+  padding:14px;display:flex;flex-direction:column;gap:6px}
+.health-name{font-size:.8rem;font-weight:700;color:#fff}
+.health-detail{font-size:.7rem;color:var(--muted);line-height:1.4}
+/* Niche grid */
+.niche-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.niche-card{background:var(--s1);border:2px solid var(--border);border-radius:12px;
+  padding:18px;cursor:pointer;transition:all .2s;position:relative;text-align:center}
+.niche-card:hover{border-color:var(--blue);transform:translateY(-2px)}
+.niche-card.sel{border-color:var(--blue);background:#0a1628}
+.niche-check{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;
+  background:var(--blue);color:#000;font-size:.65rem;display:none;
+  align-items:center;justify-content:center;font-weight:700}
+.niche-card.sel .niche-check{display:flex}
+.niche-emoji{font-size:2.2rem;margin-bottom:8px}
+.niche-name{font-size:.86rem;font-weight:700;color:#fff;margin-bottom:3px}
+.niche-desc{font-size:.7rem;color:var(--muted);line-height:1.35}
+/* Video cards */
+.video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.video-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.video-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;background:#0a0e1a;display:block}
+.video-thumb-placeholder{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#0a1628,#1a2845);
+  display:flex;align-items:center;justify-content:center;font-size:2rem}
+.video-body{padding:14px}
+.video-title{font-size:.86rem;font-weight:600;color:#fff;margin-bottom:8px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.video-meta{display:flex;gap:12px;font-size:.72rem;color:var(--muted);margin-bottom:10px}
+.video-actions{display:flex;gap:6px;flex-wrap:wrap}
+/* Form fields */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;background:#050810;
+  border:1px solid var(--border);color:#fff;padding:9px 13px;border-radius:7px;font-size:.86rem;outline:none}
+.field input:focus,.field select:focus{border-color:var(--blue)}
+.field .hint{font-size:.7rem;color:var(--muted);margin-top:3px}
+.field select option{background:#0e1525}
+/* Run section */
+.run-hero{background:linear-gradient(135deg,#090f24,#0d1835);
+  border:1px solid #1a3060;border-radius:14px;padding:26px;text-align:center;margin-bottom:20px}
+.run-hero h2{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:5px}
+.run-hero p{color:var(--muted);font-size:.86rem;margin-bottom:18px}
+.run-input{width:100%;max-width:460px;background:#050810;border:1px solid var(--border);
+  color:#fff;padding:10px 15px;border-radius:8px;font-size:.88rem;outline:none;
+  display:block;margin:0 auto 14px}
+.run-input:focus{border-color:var(--blue)}
+/* Status messages */
+.msg{padding:10px 16px;border-radius:8px;font-size:.82rem;margin-top:12px}
+.msg-info{background:#00d4ff12;color:var(--blue);border:1px solid #00d4ff28}
+.msg-ok{background:#00ff8812;color:var(--green);border:1px solid #00ff8828}
+.msg-err{background:#ff444412;color:var(--red);border:1px solid #ff444428}
+/* Setup checklist */
+.check-item{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)}
+.check-item:last-child{border-bottom:none}
+.check-num{font-size:1.3rem;flex-shrink:0;margin-top:2px}
+.check-title{font-size:.9rem;font-weight:700;color:#fff;margin-bottom:4px}
+.check-desc{font-size:.77rem;color:var(--muted);line-height:1.55}
+code{background:#050810;padding:2px 7px;border-radius:4px;font-size:.8rem;color:#88aaff}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+/* Toast */
+#toast{position:fixed;bottom:22px;right:22px;padding:11px 20px;border-radius:9px;
+  font-size:.86rem;font-weight:600;z-index:9999;display:none;
+  animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+/* Misc */
+.flex{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gap-2{gap:10px}.mt{margin-top:14px}.mt-s{margin-top:8px}
+.muted{color:var(--muted);font-size:.8rem}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#0a0e1a}
+::-webkit-scrollbar-thumb{background:#1a2540;border-radius:3px}
+hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">🤖</div>
+  <div><div class="hdr h1" style="font-size:1.05rem;font-weight:700;color:#fff">YouTube AI Bot</div>
+       <div class="hdr-sub">100% Free · Fully Automated · No Code Needed</div></div>
+  <div class="hdr-right">
+    <div class="dot" title="Bot running"></div>
+    <span id="hdr-niche" style="font-size:.78rem;color:var(--muted)">Loading...</span>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn on" onclick="nav('home')">🏠 Home</button>
+  <button class="nav-btn" onclick="nav('industry')">🏭 Industry</button>
+  <button class="nav-btn" onclick="nav('run')">▶ Make Video</button>
+  <button class="nav-btn" onclick="nav('videos')">📺 My Videos</button>
+  <button class="nav-btn" onclick="nav('monitor')">⚡ Live Monitor</button>
+  <button class="nav-btn" onclick="nav('health')">🩺 API Health</button>
+  <button class="nav-btn" onclick="nav('settings')">⚙️ Settings</button>
+  <button class="nav-btn" onclick="nav('guide')">🚀 Setup Guide</button>
+</div>
+
+<!-- ═══ HOME ═══════════════════════════════════════════════ -->
+<div class="pg on" id="pg-home">
+  <div class="g4">
+    <div class="card stat-card"><div class="stat-val" id="s-vids">—</div><div class="stat-lbl">Videos Published</div></div>
+    <div class="card stat-card"><div class="stat-val" id="s-views">—</div><div class="stat-lbl">Total Views</div></div>
+    <div class="card stat-card"><div class="stat-val" id="s-likes">—</div><div class="stat-lbl">Total Likes</div></div>
+    <div class="card stat-card"><div class="stat-val" id="s-fail">—</div><div class="stat-lbl">Failed Jobs</div></div>
+  </div>
+
+  <div class="run-hero">
+    <h2>🎬 Create a Video Right Now</h2>
+    <p>Leave blank and the bot finds today's best trending topic automatically.</p>
+    <input class="run-input" id="h-topic" placeholder="Optional: type a specific topic">
+    <div class="flex" style="justify-content:center;gap:10px">
+      <button class="btn btn-g btn-lg" id="h-run-btn" onclick="doRun('h')">🚀 Make a Video Now</button>
+      <button class="btn btn-ghost" onclick="nav('industry')">🏭 Switch Industry</button>
+    </div>
+    <div id="h-msg"></div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">📺 Current Setup</div>
+      <div id="home-setup" class="muted" style="line-height:2.1">Loading...</div>
+      <div class="mt flex">
+        <button class="btn btn-ghost btn-sm" onclick="nav('industry')">Change Industry</button>
+        <button class="btn btn-ghost btn-sm" onclick="nav('settings')">Settings</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Schedule</div>
+      <div id="home-sched" class="muted" style="line-height:2.1">Loading...</div>
+      <hr>
+      <div class="muted">Bot uploads automatically every day. You can also trigger it manually above any time.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INDUSTRY ═══════════════════════════════════════════ -->
+<div class="pg" id="pg-industry">
+  <div style="margin-bottom:18px">
+    <div style="font-size:1.2rem;font-weight:800;color:#fff">🏭 Choose Your Industry</div>
+    <div class="muted mt-s">Pick the type of content you want. The bot automatically adjusts tone, research, voice, and thumbnail style.</div>
+  </div>
+  <div class="niche-grid" id="niche-grid">Loading...</div>
+  <div class="mt flex">
+    <button class="btn btn-p btn-lg" id="save-niche-btn" onclick="saveNiche()">✅ Save & Apply</button>
+    <span id="niche-msg" style="color:var(--green);font-size:.84rem"></span>
+  </div>
+</div>
+
+<!-- ═══ MAKE VIDEO ════════════════════════════════════════ -->
+<div class="pg" id="pg-run">
+  <div class="run-hero">
+    <h2>🎬 Create a New Video</h2>
+    <p>The bot researches trends, writes a script, generates voice, edits the video, creates a thumbnail, and uploads to YouTube — fully automatically.</p>
+    <input class="run-input" id="r-topic" placeholder="Topic idea (leave blank = auto-research trending topic)">
+    <button class="btn btn-g btn-lg" id="r-run-btn" onclick="doRun('r')">🚀 Start Pipeline</button>
+    <div id="r-msg"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔄 Pipeline Steps</div>
+    <div class="muted" style="margin-bottom:12px">These steps run in order every time a video is made:</div>
+    <div class="steps" id="run-steps">
+      <span class="step" data-s="StrategyAgent">🔍 Research</span><span class="step-arrow">→</span>
+      <span class="step" data-s="BrainstormAgent">🧠 Brainstorm</span><span class="step-arrow">→</span>
+      <span class="step" data-s="ScriptAgent">✍️ Script</span><span class="step-arrow">→</span>
+      <span class="step" data-s="VoiceAgent">🎙️ Voice</span><span class="step-arrow">→</span>
+      <span class="step" data-s="VideoAgent">🎬 Video</span>
+      <span class="step" data-s="ThumbnailAgent" style="margin-left:4px">🖼️ Thumb</span>
+      <span class="step" data-s="SEOAgent" style="margin-left:4px">🏷️ SEO</span><span class="step-arrow">→</span>
+      <span class="step" data-s="UploadAgent">📤 Upload</span><span class="step-arrow">→</span>
+      <span class="step" data-s="VerifyUpload">✅ Verify</span>
+    </div>
+    <div id="run-agent-detail" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-title">❓ What Each Step Does</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:4px">
+      <div><b>🔍 Research</b><br><span class="muted">Scans Google Trends, YouTube, Hacker News & News RSS for what's trending right now</span></div>
+      <div><b>🧠 Brainstorm</b><br><span class="muted">6 AI agents simultaneously plan the hook, thumbnail, SEO strategy and story angle</span></div>
+      <div><b>✍️ Script</b><br><span class="muted">Writes a full 10–12 min script with hooks, pattern interrupts, and a strong CTA</span></div>
+      <div><b>🎙️ Voice</b><br><span class="muted">Microsoft Neural TTS — natural speech in English or Hindi, processed for clarity</span></div>
+      <div><b>🎬 Video</b><br><span class="muted">Fetches stock footage, adds zoom effects, background music, section titles</span></div>
+      <div><b>📝 Captions</b><br><span class="muted">Auto-transcribes the voice and burns styled subtitles into the video</span></div>
+      <div><b>🖼️ Thumbnail</b><br><span class="muted">AI-generated cinematic image + bold title text + emotion badge + branding</span></div>
+      <div><b>📤 Upload</b><br><span class="muted">Publishes to YouTube with title, description, chapter timestamps, and tags</span></div>
+      <div><b>✅ Verify</b><br><span class="muted">Fetches the video back from YouTube to confirm it's live and accessible</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MY VIDEOS ══════════════════════════════════════════ -->
+<div class="pg" id="pg-videos">
+  <div class="flex" style="margin-bottom:18px;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:1.15rem;font-weight:800;color:#fff">📺 My Videos</div>
+      <div class="muted mt-s">All videos published by the bot. Click Watch to view on YouTube, Studio to manage.</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="refreshAllStats()">🔄 Refresh All Stats</button>
+  </div>
+  <div class="video-grid" id="video-grid">
+    <div class="muted">Loading videos...</div>
+  </div>
+  <hr>
+  <div class="card mt">
+    <div class="card-title">📋 Full Job Log</div>
+    <table>
+      <thead><tr><th>#</th><th>Topic</th><th>Industry</th><th>Status</th><th>Date</th><th>Time</th><th>Actions</th></tr></thead>
+      <tbody id="jobs-tbody"><tr><td colspan="7" class="muted">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ LIVE MONITOR ══════════════════════════════════════ -->
+<div class="pg" id="pg-monitor">
+  <div class="g2">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>⚡ Live Log</span>
+        <div class="flex gap-2">
+          <span id="sse-status" class="badge info">Connecting...</span>
+          <button class="btn btn-ghost btn-sm" onclick="clearConsole()">Clear</button>
+          <label style="font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+          </label>
+        </div>
+      </div>
+      <div class="console" id="log-console">Connecting to live log stream...</div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">🤖 Agent Status</div>
+        <div id="agent-status"><span class="muted">No job running</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🧠 Last Brainstorm</div>
+        <div id="brainstorm-panel"><span class="muted">No data yet. Make a video first!</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ API HEALTH ════════════════════════════════════════ -->
+<div class="pg" id="pg-health">
+  <div class="flex" style="margin-bottom:18px;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:1.15rem;font-weight:800;color:#fff">🩺 API Health</div>
+      <div class="muted mt-s">Status of every external service the bot uses. Green = working, Red = needs attention.</div>
+    </div>
+    <button class="btn btn-p" id="check-btn" onclick="runHealthCheck()">🔄 Run Health Check Now</button>
+  </div>
+
+  <div class="health-grid" id="health-grid">
+    <div class="muted">Loading... click "Run Health Check" to test all APIs.</div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-title">🤖 AI Provider</div>
+    <div id="ai-provider-panel"><span class="muted">Loading...</span></div>
+    <hr>
+    <div class="muted" style="font-size:.79rem">
+      The bot uses Groq (if configured) or Gemini as AI engine.
+      Groq is faster but optional. Gemini works with just GEMINI_API_KEY in .env.
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-title">🔑 What Each Key Does</div>
+    <table>
+      <thead><tr><th>Service</th><th>Used For</th><th>Free Limit</th><th>Get Key</th></tr></thead>
+      <tbody>
+        <tr><td><b>Gemini</b></td><td>Write scripts, SEO, brainstorm, strategy</td><td>1,500 req/day</td><td><a href="https://aistudio.google.com/" target="_blank">aistudio.google.com</a></td></tr>
+        <tr><td><b>Groq</b> (optional)</td><td>Faster AI, used instead of Gemini if set</td><td>14,400 req/day</td><td><a href="https://console.groq.com/" target="_blank">console.groq.com</a></td></tr>
+        <tr><td><b>Pexels</b></td><td>Stock video footage</td><td>200 req/hour</td><td><a href="https://www.pexels.com/api/" target="_blank">pexels.com/api</a></td></tr>
+        <tr><td><b>Pixabay</b></td><td>Footage fallback + background music</td><td>100 req/min</td><td><a href="https://pixabay.com/api/docs/" target="_blank">pixabay.com/api/docs</a></td></tr>
+        <tr><td><b>YouTube</b></td><td>Upload videos to your channel</td><td>10,000 units/day</td><td><a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a></td></tr>
+        <tr><td><b>edge-tts</b></td><td>Voice narration (English + Hindi)</td><td>Unlimited</td><td>Built-in, no key needed</td></tr>
+        <tr><td><b>Pollinations.ai</b></td><td>Thumbnail base images</td><td>Unlimited</td><td>No key needed</td></tr>
+        <tr><td><b>Google Trends</b></td><td>Trend research</td><td>Unlimited</td><td>No key needed</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS ═════════════════════════════════════════ -->
+<div class="pg" id="pg-settings">
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">📺 Channel</div>
+      <div class="field"><label>Channel Name</label>
+        <input id="s-name" placeholder="e.g. TechExplained"><div class="hint">Shown on thumbnails</div></div>
+      <div class="field"><label>Language</label>
+        <select id="s-lang"><option value="en">🇺🇸 English</option><option value="hi">🇮🇳 Hindi</option></select></div>
+      <div class="field"><label>Voice Gender</label>
+        <select id="s-gender"><option value="male">Male</option><option value="female">Female</option></select></div>
+      <div class="field"><label>Video Tone</label>
+        <input id="s-tone" placeholder="e.g. energetic and slightly dramatic"></div>
+      <div class="field"><label>Target Audience</label>
+        <input id="s-audience" placeholder="e.g. curious people aged 18–35"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⏰ Schedule & Quality</div>
+      <div class="field"><label>Daily Upload Time (UTC hour 0–23)</label>
+        <input id="s-hour" type="number" min="0" max="23" placeholder="10">
+        <div class="hint">10 = 10:00 AM UTC. <a href="https://www.worldtimebuddy.com/" target="_blank">Convert to your timezone</a></div></div>
+      <div class="field"><label>Background Music</label>
+        <select id="s-music"><option value="true">✅ On (recommended)</option><option value="false">❌ Off</option></select></div>
+      <div class="field"><label>Zoom Effects (Ken Burns)</label>
+        <select id="s-zoom"><option value="true">✅ On — more engaging</option><option value="false">❌ Off — faster render</option></select>
+        <div class="hint">Disable if your VPS is slow</div></div>
+      <div class="mt flex">
+        <button class="btn btn-p" onclick="saveSettings()">💾 Save Settings</button>
+        <span id="settings-msg" style="font-size:.82rem;color:var(--green)"></span>
+      </div>
+    </div>
+  </div>
+  <div class="card mt">
+    <div class="card-title">🛠️ Quick Actions</div>
+    <div class="flex gap-2">
+      <button class="btn btn-y" onclick="doAction('/api/strategy','Refreshing weekly strategy...')">📅 Refresh Strategy</button>
+      <button class="btn btn-ghost" onclick="doAction('/api/analyse','Running analytics...')">📊 Analyse Performance</button>
+      <button class="btn btn-ghost" onclick="nav('health')">🩺 Check All APIs</button>
+    </div>
+    <div id="action-msg" class="mt muted"></div>
+  </div>
+</div>
+
+<!-- ═══ SETUP GUIDE ════════════════════════════════════════ -->
+<div class="pg" id="pg-guide">
+  <div class="card" style="max-width:820px">
+    <div class="card-title" style="font-size:1.1rem">🚀 Setup Guide — 15 Minutes to First Video</div>
+    <div class="muted" style="margin-bottom:20px">Complete these steps once. Everything is free — no credit card.</div>
+
+    <div class="check-item"><div class="check-num">1️⃣</div><div>
+      <div class="check-title">Install System Dependencies</div>
+      <div class="check-desc">On Ubuntu/Debian (Oracle Free Tier, Hostinger, etc.):<br>
+      <code>sudo apt install -y python3 python3-pip ffmpeg</code><br>
+      <code>pip install -r requirements.txt</code></div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">2️⃣</div><div>
+      <div class="check-title">Get Gemini API Key <span style="color:var(--green)">(1 min, free)</span></div>
+      <div class="check-desc">
+        → Go to <a href="https://aistudio.google.com/" target="_blank">aistudio.google.com</a><br>
+        → Sign in with Google → Click <b>Get API Key</b> → Copy it<br>
+        → Open your <code>.env</code> file → Set <code>GEMINI_API_KEY=AIza...</code>
+      </div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">3️⃣</div><div>
+      <div class="check-title">Get Groq Key (Optional — Faster AI) <span style="color:var(--blue)">(1 min, free)</span></div>
+      <div class="check-desc">
+        → Go to <a href="https://console.groq.com/" target="_blank">console.groq.com</a> → Sign up free → Create API Key<br>
+        → Set <code>GROQ_API_KEY=gsk_...</code> in your <code>.env</code><br>
+        <span style="color:var(--yellow)">Optional but recommended</span> — makes the bot 5× faster and has 14,400 free req/day
+      </div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">4️⃣</div><div>
+      <div class="check-title">Get Pexels Key <span style="color:var(--green)">(1 min, free)</span></div>
+      <div class="check-desc">→ <a href="https://www.pexels.com/api/" target="_blank">pexels.com/api</a> → Sign up → Get API Key → <code>PEXELS_API_KEY=...</code></div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">5️⃣</div><div>
+      <div class="check-title">Get Pixabay Key <span style="color:var(--green)">(1 min, free)</span></div>
+      <div class="check-desc">→ <a href="https://pixabay.com/api/docs/" target="_blank">pixabay.com/api/docs</a> → Sign up → <code>PIXABAY_API_KEY=...</code></div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">6️⃣</div><div>
+      <div class="check-title">Connect YouTube Channel <span style="color:var(--yellow)">(10 min)</span></div>
+      <div class="check-desc">
+        1. → <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> → New Project<br>
+        2. → APIs & Services → Enable <b>YouTube Data API v3</b><br>
+        3. → Credentials → <b>OAuth 2.0 Client ID</b> → Desktop App<br>
+        4. → Copy Client ID & Secret into <code>.env</code><br>
+        5. → On any computer with browser: <code>python auth_setup.py</code><br>
+        6. → Copy printed <code>YOUTUBE_REFRESH_TOKEN</code> into <code>.env</code>
+      </div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">7️⃣</div><div>
+      <div class="check-title">Test Everything</div>
+      <div class="check-desc">
+        <code>python main.py --setup-check</code><br>
+        All green = ready. Then go to the <b>🩺 API Health</b> tab in this dashboard to verify.
+      </div>
+    </div></div>
+
+    <div class="check-item"><div class="check-num">8️⃣</div><div>
+      <div class="check-title">Make Your First Video!</div>
+      <div class="check-desc">
+        <code>python main.py --run-now</code> — or use the <b>▶ Make Video</b> tab above.<br>
+        First video takes ~20–30 minutes. Watch the <b>⚡ Live Monitor</b> tab to see exactly what's happening.
+      </div>
+    </div></div>
+
+    <hr>
+    <div class="check-title" style="margin-bottom:10px">🖥️ Run 24/7 on Oracle Free Tier (Recommended)</div>
+    <div class="check-desc" style="font-size:.8rem">
+      Oracle Cloud offers a <b>forever-free</b> VM (2 CPU, 1GB RAM — enough for this bot).<br>
+      Sign up at <a href="https://www.oracle.com/cloud/free/" target="_blank">oracle.com/cloud/free</a> → Create Ubuntu VM → SSH in → Upload files → Run as service:<br><br>
+      <code style="display:block;padding:10px;margin:6px 0">
+        sudo nano /etc/systemd/system/ytbot.service<br>
+        # paste: [Service] ExecStart=/usr/bin/python3 main.py WorkingDirectory=/path/to/bot<br>
+        sudo systemctl enable ytbot && sudo systemctl start ytbot<br>
+        sudo journalctl -u ytbot -f   # live logs
+      </code>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let selectedNiche = null;
+let liveState     = {};
+let sseSource     = null;
+
+// ── Navigation ─────────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll('.pg').forEach(p  => p.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('pg-' + page).classList.add('on');
+  const pages = ['home','industry','run','videos','monitor','health','settings','guide'];
+  const idx = pages.indexOf(page);
+  if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('on');
+  if (page === 'videos')   { loadVideos(); loadJobs(); }
+  if (page === 'monitor')  { loadBrainstorm(); connectSSE(); }
+  if (page === 'health')   { loadHealth(); loadAIStatus(); }
+  if (page === 'settings') loadSettings();
+  if (page === 'industry') loadNiches();
+}
+
+// ── Toast ──────────────────────────────────────────────────
+function toast(msg, color='#00d4ff') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = color;
+  el.style.color = (color === '#00ff88' || color === '#ffb800') ? '#000' : '#fff';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+function showMsg(id, type, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'msg msg-' + type;
+  el.textContent = text;
+  el.style.display = 'block';
+}
+
+// ── Stats ──────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await jfetch('/api/stats');
+    q('s-vids').textContent  = d.total_videos  || 0;
+    q('s-views').textContent = fmt(d.total_views || 0);
+    q('s-likes').textContent = fmt(d.total_likes || 0);
+    q('s-fail').textContent  = d.failed_jobs   || 0;
+    q('hdr-niche').textContent = `${d.niche_emoji||'📺'} ${d.niche_label||d.niche} · ${(d.language||'en').toUpperCase()}`;
+    q('home-setup').innerHTML =
+      `<b>Industry:</b> ${d.niche_emoji||''} ${d.niche_label||d.niche}<br>` +
+      `<b>Language:</b> ${d.language==='hi'?'🇮🇳 Hindi':'🇺🇸 English'}<br>` +
+      `<b>Voice:</b> ${d.voice||'—'}<br>` +
+      `<b>Channel:</b> ${d.channel_name||'—'}`;
+    q('home-sched').innerHTML =
+      `<b>Daily post:</b> ${String(d.upload_hour||10).padStart(2,'0')}:${String(d.upload_minute||0).padStart(2,'0')} UTC<br>` +
+      `<b>Music:</b> ${d.music?'✅ On':'❌ Off'}<br>` +
+      `<b>Zoom effects:</b> ${d.zoom?'✅ On':'❌ Off'}`;
+  } catch(e) { console.error(e); }
+}
+
+// ── Videos tab ─────────────────────────────────────────────
+async function loadVideos() {
+  const grid = q('video-grid');
+  try {
+    const vids = await jfetch('/api/videos');
+    if (!vids.length) {
+      grid.innerHTML = '<div class="muted">No videos yet. Go to ▶ Make Video to create your first one!</div>';
+      return;
+    }
+    grid.innerHTML = vids.map(v => `
+      <div class="video-card">
+        ${v.thumbnail_url
+          ? `<img class="video-thumb" src="${v.thumbnail_url}" alt="${esc(v.title)}" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="video-thumb-placeholder">🎬</div>`}
+        <div class="video-body">
+          <div class="video-title">${esc(v.title||'Untitled')}</div>
+          <div class="video-meta">
+            <span>👁 ${fmt(v.views||0)}</span>
+            <span>👍 ${fmt(v.likes||0)}</span>
+            <span>💬 ${fmt(v.comments||0)}</span>
+            <span class="badge ${v.verified?'ok':'warn'}">${v.verified?'✅ Live':'⏳ Unverified'}</span>
+          </div>
+          <div class="video-actions">
+            ${v.url ? `<a href="${v.url}" target="_blank" class="btn btn-p btn-sm">▶ Watch</a>` : ''}
+            ${v.studio_url ? `<a href="${v.studio_url}" target="_blank" class="btn btn-ghost btn-sm">🎬 Studio</a>` : ''}
+            ${v.video_id ? `<button class="btn btn-ghost btn-sm" onclick="refreshStats('${v.video_id}',this)">🔄 Refresh</button>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) { grid.innerHTML = `<div class="muted">Error: ${e.message}</div>`; }
+}
+
+async function refreshStats(videoId, btn) {
+  if (btn) { btn.disabled=true; btn.textContent='...'; }
+  try {
+    const d = await jfetch(`/api/videos/${videoId}/refresh-stats`);
+    if (d.success) { toast('Stats updated!', '#00ff88'); loadVideos(); }
+    else toast('Could not fetch stats: ' + d.error, '#ff4444');
+  } finally { if (btn) { btn.disabled=false; btn.textContent='🔄 Refresh'; } }
+}
+
+async function refreshAllStats() {
+  toast('Refreshing all stats...', '#ffb800');
+  const vids = await jfetch('/api/videos');
+  for (const v of vids.filter(v => v.video_id)) {
+    await jfetch(`/api/videos/${v.video_id}/refresh-stats`);
+    await new Promise(r => setTimeout(r, 600));
+  }
+  loadVideos(); toast('All stats updated!', '#00ff88');
+}
+
+async function loadJobs() {
+  const tb = q('jobs-tbody');
+  const jobs = await jfetch('/api/jobs');
+  if (!jobs.length) { tb.innerHTML = '<tr><td colspan="7" class="muted">No jobs yet</td></tr>'; return; }
+  tb.innerHTML = jobs.map((j,i) => {
+    const dur = j.started_at && j.finished_at
+      ? Math.round((new Date(j.finished_at)-new Date(j.started_at))/60000)+'m' : '—';
+    return `<tr>
+      <td class="muted">${jobs.length-i}</td>
+      <td style="max-width:260px">${esc(j.topic||'—')}</td>
+      <td>${j.niche||'—'}</td>
+      <td><span class="badge ${j.status==='success'?'ok':j.status==='failed'?'fail':'warn'}">${j.status}</span></td>
+      <td class="muted">${(j.started_at||'').substring(0,10)}</td>
+      <td class="muted">${dur}</td>
+      <td>${j.video_url
+        ?`<a href="${j.video_url}" target="_blank" class="btn btn-ghost btn-sm">▶ Watch</a>`
+        : j.error ? `<span style="color:var(--red);font-size:.73rem">${esc(j.error.substring(0,60))}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Pipeline run ────────────────────────────────────────────
+async function doRun(prefix) {
+  const inputId = prefix === 'h' ? 'h-topic' : 'r-topic';
+  const btnId   = prefix === 'h' ? 'h-run-btn' : 'r-run-btn';
+  const msgId   = prefix === 'h' ? 'h-msg' : 'r-msg';
+  const topic   = (q(inputId)||{value:''}).value.trim();
+  const btn     = q(btnId);
+  btn.disabled  = true; btn.textContent = '⏳ Starting...';
+  showMsg(msgId, 'info', '🔄 Pipeline started! Researching topic and writing script...');
+  try {
+    const d = await jfetch('/api/run', 'POST', {topic: topic||null});
+    if (d.success) {
+      toast('Pipeline started! 🚀', '#00ff88');
+      showMsg(msgId, 'ok', '✅ Running! Takes 20–35 minutes. Watch the ⚡ Live Monitor tab to see every step in real-time.');
+      if (prefix === 'r') setTimeout(() => nav('monitor'), 2500);
+    } else {
+      showMsg(msgId, 'err', '❌ Error: ' + d.error);
+    }
+  } catch(e) {
+    showMsg(msgId, 'err', '❌ ' + e.message);
+  }
+  setTimeout(() => { btn.disabled=false; btn.textContent = prefix==='h'?'🚀 Make a Video Now':'🚀 Start Pipeline'; loadStats(); }, 5000);
+}
+
+// ── SSE live log ────────────────────────────────────────────
+const LEVEL_CLASS = {INFO:'log-INFO',SUCCESS:'log-SUCCESS',WARNING:'log-WARNING',ERROR:'log-ERROR',DEBUG:'log-DEBUG'};
+
+function connectSSE() {
+  if (sseSource) return;
+  const console_ = q('log-console');
+  console_.textContent = '';
+  sseSource = new EventSource('/stream/logs');
+  sseSource.onopen = () => {
+    q('sse-status').textContent = '🟢 Connected';
+    q('sse-status').className   = 'badge ok';
+  };
+  sseSource.onerror = () => {
+    q('sse-status').textContent = '🔴 Disconnected';
+    q('sse-status').className   = 'badge fail';
+    sseSource = null; setTimeout(connectSSE, 3000);
+  };
+  sseSource.onmessage = (e) => {
+    try {
+      const d    = JSON.parse(e.data);
+      const line = document.createElement('div');
+      line.className = LEVEL_CLASS[d.level] || 'log-INFO';
+      const ts    = d.ts ? `<span style="color:#333">${d.ts}</span> ` : '';
+      const agent = d.agent ? `<span style="color:#5566aa">[${d.agent}]</span> ` : '';
+      line.innerHTML = ts + agent + esc(d.message||'');
+      console_.appendChild(line);
+      if (q('auto-scroll').checked) console_.scrollTop = console_.scrollHeight;
+      // Update step bubbles from log
+      updateStepFromLog(d);
+    } catch(ex) {}
+  };
+}
+
+function updateStepFromLog(d) {
+  // Update pipeline step indicators when log mentions agents
+  const msg = (d.message||'').toLowerCase();
+  document.querySelectorAll('.step[data-s]').forEach(el => {
+    const agent = el.dataset.s;
+    if (liveState.agents && liveState.agents[agent]) {
+      el.className = 'step ' + liveState.agents[agent].status;
+    }
+  });
+}
+
+function clearConsole() { q('log-console').textContent = ''; }
+
+// ── Agent status ────────────────────────────────────────────
+const AGENT_ICONS = {
+  StrategyAgent:'🔍',BrainstormAgent:'🧠',ScriptAgent:'✍️',VoiceAgent:'🎙️',
+  VideoAgent:'🎬',CaptionAgent:'📝',CaptionBurnAgent:'🔥',ThumbnailAgent:'🖼️',
+  SEOAgent:'🏷️',UploadAgent:'📤',VerifyUpload:'✅',HolisticAgent:'🎯'
+};
+
+async function loadLiveAgents() {
+  try {
+    const d = await jfetch('/api/live');
+    liveState = d;
+    const agents = d.agents || {};
+    const el = q('agent-status');
+    const el2 = q('run-agent-detail');
+
+    // Update pipeline step bubbles
+    document.querySelectorAll('.step[data-s]').forEach(bubble => {
+      const agent = bubble.dataset.s;
+      if (agents[agent]) bubble.className = 'step ' + agents[agent].status;
+    });
+
+    if (!Object.keys(agents).length) {
+      el.innerHTML = '<span class="muted">No job running</span>';
+      if (el2) el2.innerHTML = '';
+      return;
+    }
+    const html = Object.entries(agents).map(([name, info]) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #0a0c14">
+        <span style="width:22px;text-align:center">${AGENT_ICONS[name]||'🤖'}</span>
+        <span style="width:140px;font-size:.8rem;font-weight:600">${name.replace('Agent','')}</span>
+        <span class="badge ${info.status==='success'?'ok':info.status==='failed'?'fail':'warn'}">${info.status}</span>
+        <div class="bar-wrap" style="flex:1"><div class="bar-fill ${info.status==='success'?'g':''}" style="width:${info.pct||0}%"></div></div>
+        <span style="font-size:.7rem;color:var(--muted);width:35px">${info.pct||0}%</span>
+        <span style="font-size:.72rem;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${info.summary||''}</span>
+      </div>`).join('');
+    el.innerHTML = html;
+    if (el2) el2.innerHTML = html;
+  } catch(e) {}
+}
+
+// ── Brainstorm ──────────────────────────────────────────────
+async function loadBrainstorm() {
+  try {
+    const d  = await jfetch('/api/brainstorm/latest');
+    const el = q('brainstorm-panel');
+    if (!d.topic) { el.innerHTML = '<span class="muted">No data yet</span>'; return; }
+    const contribs = d.contributions || {};
+    el.innerHTML = `<div style="margin-bottom:10px;font-weight:700;color:var(--blue)">${esc(d.topic)}</div>` +
+      Object.entries(contribs).slice(0,3).map(([agent,data]) =>
+        `<div style="margin-bottom:8px">
+          <div style="font-size:.74rem;font-weight:700;color:var(--yellow);margin-bottom:3px">${agent.replace('Agent','')}</div>
+          <div style="font-size:.73rem;color:var(--muted);background:#050810;padding:7px;border-radius:5px;white-space:pre-wrap;max-height:80px;overflow:hidden">
+            ${esc(JSON.stringify(data).substring(0,200))}
+          </div>
+        </div>`).join('') +
+      (d.final_direction ? `<div style="font-size:.77rem;padding:8px;background:#00d4ff0a;border:1px solid #00d4ff18;border-radius:7px;color:#aab"><b>Direction:</b> ${esc(d.final_direction.substring(0,180))}</div>` : '');
+  } catch(e) {}
+}
+
+// ── Niche selector ──────────────────────────────────────────
+async function loadNiches() {
+  try {
+    const [niches, stats] = await Promise.all([jfetch('/api/niches'), jfetch('/api/stats')]);
+    selectedNiche = stats.niche;
+    const grid = q('niche-grid');
+    grid.innerHTML = niches.map(n => `
+      <div class="niche-card ${n.id===selectedNiche?'sel':''}" id="nc-${n.id}" onclick="pickNiche('${n.id}')">
+        <div class="niche-check">✓</div>
+        <div class="niche-emoji">${n.emoji}</div>
+        <div class="niche-name">${n.label}</div>
+        <div class="niche-desc">${n.description}</div>
+      </div>`).join('');
+  } catch(e) { q('niche-grid').innerHTML = '<span class="muted">Failed to load industries</span>'; }
+}
+
+function pickNiche(id) {
+  document.querySelectorAll('.niche-card').forEach(c => c.classList.remove('sel'));
+  const card = document.getElementById('nc-'+id);
+  if (card) card.classList.add('sel');
+  selectedNiche = id;
+}
+
+async function saveNiche() {
+  if (!selectedNiche) { toast('Please pick an industry first', '#ff4444'); return; }
+  const btn = q('save-niche-btn');
+  btn.disabled=true; btn.textContent='Saving...';
+  const d = await jfetch('/api/niche','POST',{niche:selectedNiche});
+  if (d.success) {
+    toast(`✅ Industry set to ${d.label}!`, '#00ff88');
+    q('niche-msg').textContent = `✅ Saved! Videos will now be made for: ${d.label}`;
+    loadStats();
+  } else toast('Error: '+d.error,'#ff4444');
+  btn.disabled=false; btn.textContent='✅ Save & Apply';
+}
+
+// ── Health panel ────────────────────────────────────────────
+const SERVICE_INFO = {
+  gemini:   {label:'Gemini AI',   icon:'🤖', desc:'Script writing, SEO, brainstorm'},
+  groq:     {label:'Groq AI',     icon:'⚡', desc:'Faster AI (optional)'},
+  pexels:   {label:'Pexels',      icon:'🎬', desc:'Stock video footage'},
+  pixabay:  {label:'Pixabay',     icon:'🎵', desc:'Footage + background music'},
+  youtube:  {label:'YouTube',     icon:'📺', desc:'Upload videos to your channel'},
+  ffmpeg:   {label:'FFmpeg',      icon:'🖥️', desc:'Video rendering (local)'},
+  edge_tts: {label:'edge-tts',    icon:'🎙️', desc:'Voice narration (local)'},
+};
+
+async function loadHealth() {
+  const d   = await jfetch('/api/health');
+  const el  = q('health-grid');
+  if (!Object.keys(d).length) {
+    el.innerHTML = '<div class="muted">No health data yet. Click "Run Health Check Now".</div>';
+    return;
+  }
+  el.innerHTML = Object.entries(SERVICE_INFO).map(([key, info]) => {
+    const h = d[key] || {status:'unknown'};
+    const cls = h.status==='ok'?'ok':h.status==='error'?'fail':'warn';
+    const icon = h.status==='ok'?'✅':h.status==='error'?'❌':'⚠️';
+    return `<div class="health-item">
+      <div class="health-name">${info.icon} ${info.label}</div>
+      <span class="badge ${cls}">${icon} ${h.status||'unknown'}</span>
+      <div class="health-detail">${info.desc}</div>
+      ${h.detail?`<div style="font-size:.68rem;color:#555;word-break:break-all">${esc(h.detail.substring(0,100))}</div>`:''}
+      ${h.checked_at?`<div style="font-size:.65rem;color:#333">Checked: ${h.checked_at.substring(11,16)} UTC</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function runHealthCheck() {
+  const btn = q('check-btn');
+  btn.disabled=true; btn.textContent='Checking...';
+  await jfetch('/api/health/check','POST');
+  toast('Health check running...', '#ffb800');
+  setTimeout(async () => { await loadHealth(); await loadAIStatus(); btn.disabled=false; btn.textContent='🔄 Run Health Check Now'; toast('Health check complete!','#00ff88'); }, 8000);
+}
+
+async function loadAIStatus() {
+  try {
+    const d  = await jfetch('/api/ai-status');
+    const el = q('ai-provider-panel');
+    const prov = d.providers || {};
+    const active = d.active_provider || 'none';
+    el.innerHTML = Object.entries(prov).map(([name, p]) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #0a0c14">
+        <span style="width:80px;font-weight:700">${name.charAt(0).toUpperCase()+name.slice(1)}</span>
+        <span class="badge ${p.configured?(name===active?'ok':'info'):'warn'}">${p.configured?(name===active?'✅ Active':'⬜ Ready'):'❌ Not set'}</span>
+        <span style="font-size:.77rem;color:var(--muted)">${p.model||''}</span>
+        <span style="font-size:.72rem;color:#444">${p.free_limit||''}</span>
+        ${!p.configured?`<a href="${p.get_key||'#'}" target="_blank" class="btn btn-ghost btn-sm">Get Key</a>`:''}
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ── Settings ────────────────────────────────────────────────
+async function loadSettings() {
+  const s = await jfetch('/api/settings');
+  q('s-name').value    = s.CHANNEL_NAME     || '';
+  q('s-lang').value    = s.CHANNEL_LANGUAGE || 'en';
+  q('s-gender').value  = s.TTS_VOICE_GENDER || 'male';
+  q('s-tone').value    = s.CHANNEL_TONE     || '';
+  q('s-audience').value= s.TARGET_AUDIENCE  || '';
+  q('s-hour').value    = s.UPLOAD_HOUR      || '10';
+  q('s-music').value   = (s.ENABLE_MUSIC !== 'false') ? 'true' : 'false';
+  q('s-zoom').value    = (s.ENABLE_ZOOM_EFFECTS !== 'false') ? 'true' : 'false';
+}
+
+async function saveSettings() {
+  const data = {
+    CHANNEL_NAME:        q('s-name').value,
+    CHANNEL_LANGUAGE:    q('s-lang').value,
+    TTS_VOICE_GENDER:    q('s-gender').value,
+    CHANNEL_TONE:        q('s-tone').value,
+    TARGET_AUDIENCE:     q('s-audience').value,
+    UPLOAD_HOUR:         q('s-hour').value,
+    ENABLE_MUSIC:        q('s-music').value,
+    ENABLE_ZOOM_EFFECTS: q('s-zoom').value,
+  };
+  const d = await jfetch('/api/settings','POST',data);
+  if (d.success) {
+    q('settings-msg').textContent = '✅ Saved!';
+    toast('Settings saved!','#00ff88');
+    loadStats();
+    setTimeout(() => q('settings-msg').textContent='', 3000);
+  } else toast('Error: '+d.error,'#ff4444');
+}
+
+async function doAction(url, msg) {
+  q('action-msg').textContent = '⏳ ' + msg;
+  await jfetch(url,'POST');
+  q('action-msg').textContent = '✅ Done!';
+  setTimeout(() => q('action-msg').textContent='', 4000);
+}
+
+// ── Utils ───────────────────────────────────────────────────
+function q(id) { return document.getElementById(id); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(n) { return n>999999?(n/1000000).toFixed(1)+'M':n>999?(n/1000).toFixed(1)+'K':String(n); }
+async function jfetch(url, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+// ── Init & timers ───────────────────────────────────────────
+loadStats();
+setInterval(loadStats, 30000);
+setInterval(loadLiveAgents, 4000);
+</script>
+</body></html>
