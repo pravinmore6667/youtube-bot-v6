@@ -1,0 +1,85 @@
+2026-05-31 12:23:54 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 12:28:19 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 12:31:11 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 12:41:22 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 12:43:12 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:16:41 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:19:38 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:22:05 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:22:53 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:25:00 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:28:56 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:30:28 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:31:15 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-05-31 14:59:02 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-01 11:31:54 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-01 11:33:03 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-01 11:34:01 | INFO    | Main                 | Pillow version: 10.4.0
+2026-06-01 11:34:02 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-01 16:43:31 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-01 16:47:18 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 04:07:16 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 04:12:09 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 04:14:05 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 04:17:43 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 04:51:02 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 04:52:10 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 05:00:42 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-02 05:19:54 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-03 17:59:03 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-03 19:35:37 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-03 19:40:50 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-03 19:42:32 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 03:54:23 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 03:55:50 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 04:16:57 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 05:14:07 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 05:16:18 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:03:33 | WARNING | ChannelMemoryAgent   | ChromaDB not found. Vector memory will be simulated using local files.
+2026-06-04 16:06:08 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:06:08 | INFO    | DecisionAgent        | Making autonomous decisions for: AI Agents
+2026-06-04 16:06:09 | WARNING | AIRouter             | [pollinations] Model=unknown Latency=1.07s Status=Error Error="All Pollinations models failed. Last error: Pollinations err"
+2026-06-04 16:06:09 | WARNING | AIRouter             | Rate limit exceeded on pollinations. Immediately falling back to next provider.
+2026-06-04 16:06:09 | WARNING | AIRouter             | [puter] Model=unknown Latency=0.14s Status=Error Error="Puter endpoint returned 404 and is now disabled. Error: {"er"
+2026-06-04 16:06:09 | WARNING | AIRouter             | [puter] Model=unknown Latency=0.00s Status=Error Error="Puter provider is currently disabled due to previous 404 err"
+2026-06-04 16:06:27 | INFO    | AIRouter             | [ai_horde] Model=unknown Latency=17.66s Tokens=43 Status=Success
+2026-06-04 16:06:27 | WARNING | AIRouter             | JSON parse failed (attempt 1): Parsed JSON is empty.
+2026-06-04 16:06:27 | INFO    | AIRouter             | Returning cached response.
+2026-06-04 16:06:27 | WARNING | AIRouter             | JSON parse failed (attempt 2): Parsed JSON is empty.
+2026-06-04 16:06:27 | INFO    | AIRouter             | Returning cached response.
+2026-06-04 16:06:27 | WARNING | AIRouter             | JSON parse failed (attempt 3): Parsed JSON is empty.
+2026-06-04 16:06:27 | WARNING | DecisionAgent        | AI Decision making failed, falling back to heuristics: AI returned invalid JSON: Parsed JSON is empty.
+2026-06-04 16:11:17 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:12:40 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:12:40 | INFO    | ThumbnailIntelligenceAgent | Running Thumbnail Intelligence for: AI Agents
+2026-06-04 16:12:41 | WARNING | AIRouter             | [pollinations] Model=unknown Latency=1.12s Status=Error Error="All Pollinations models failed. Last error: Pollinations err"
+2026-06-04 16:12:41 | WARNING | AIRouter             | Rate limit exceeded on pollinations. Immediately falling back to next provider.
+2026-06-04 16:12:41 | WARNING | AIRouter             | [puter] Model=unknown Latency=0.14s Status=Error Error="Puter endpoint returned 404 and is now disabled. Error: {"er"
+2026-06-04 16:12:41 | WARNING | AIRouter             | [puter] Model=unknown Latency=0.00s Status=Error Error="Puter provider is currently disabled due to previous 404 err"
+2026-06-04 16:13:03 | INFO    | AIRouter             | [ai_horde] Model=unknown Latency=22.02s Tokens=0 Status=Success
+2026-06-04 16:13:03 | WARNING | AIRouter             | JSON parse failed (attempt 1): Parsed JSON is empty.
+2026-06-04 16:13:03 | WARNING | AIRouter             | [puter] Model=unknown Latency=0.00s Status=Error Error="Puter provider is currently disabled due to previous 404 err"
+2026-06-04 16:13:03 | WARNING | AIRouter             | [puter] Model=unknown Latency=0.00s Status=Error Error="Puter provider is currently disabled due to previous 404 err"
+2026-06-04 16:13:09 | INFO    | AIRouter             | [ai_horde] Model=unknown Latency=5.89s Tokens=0 Status=Success
+2026-06-04 16:13:09 | WARNING | AIRouter             | JSON parse failed (attempt 2): Parsed JSON is empty.
+2026-06-04 16:13:18 | INFO    | AIRouter             | [ai_horde] Model=unknown Latency=8.98s Tokens=47 Status=Success
+2026-06-04 16:13:18 | WARNING | AIRouter             | JSON parse failed (attempt 3): Parsed JSON is empty.
+2026-06-04 16:13:18 | WARNING | ThumbnailIntelligenceAgent | Thumbnail intelligence failed: AI returned invalid JSON: Parsed JSON is empty.. Falling back to default.
+2026-06-04 16:13:18 | INFO    | ThumbnailAgent       |   Fetching image from Pollinations.ai...
+2026-06-04 16:13:19 | WARNING | ThumbnailAgent       |   Pollinations failed: 402 Client Error: Payment Required for url: https://image.pollinations.ai/prompt/%2C%20Hollywood%20cinematic%2C%20dramatic%20lighting%2C%20high%20contrast%2C%20YouTube%20thumbnail%20background%2C%20no%20text%2C%20photorealistic%2C%208K%20quality%2C%20vivid%20technology%20themed%20imagery%2C%20dark%20vignette%20edges%2C%20professional%20composition%20with%20rule%20of%20thirds?width=1280&height=720&nologo=true&enhance=true&seed=2340
+2026-06-04 16:13:19 | INFO    | ThumbnailAgent       |   Fetching image from Pollinations.ai...
+2026-06-04 16:13:19 | WARNING | ThumbnailAgent       |   Pollinations failed: 402 Client Error: Payment Required for url: https://image.pollinations.ai/prompt/%2C%20Hollywood%20cinematic%2C%20dramatic%20lighting%2C%20high%20contrast%2C%20YouTube%20thumbnail%20background%2C%20no%20text%2C%20photorealistic%2C%208K%20quality%2C%20vivid%20technology%20themed%20imagery%2C%20dark%20vignette%20edges%2C%20professional%20composition%20with%20rule%20of%20thirds?width=1280&height=720&nologo=true&enhance=true&seed=42
+2026-06-04 16:13:19 | INFO    | ThumbnailAgent       | ✔ Thumbnail: output/thumbnails/68b89315b7_thumb.jpg
+2026-06-04 16:15:19 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:16:52 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:18:22 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:26:12 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:26:12 | WARNING | ChannelMemoryAgent   | ChromaDB not found. Vector memory will be simulated using local files.
+2026-06-04 16:26:12 | INFO    | AnalyticsAgent       | Not enough data for deep self-learning yet (need 3+ videos)
+2026-06-04 16:36:04 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 16:36:04 | WARNING | ChannelMemoryAgent   | ChromaDB not found. Vector memory will be simulated using local files.
+2026-06-04 16:36:04 | INFO    | AnalyticsAgent       | Not enough data for deep self-learning yet (need 3+ videos)
+2026-06-04 17:38:03 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 17:38:04 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 17:40:07 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-04 17:44:58 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
