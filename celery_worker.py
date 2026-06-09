@@ -37,16 +37,26 @@ def run_pipeline_task(self, topic: str = None):
 def analytics_learning_loop_task(self):
     """
     Celery task to run the self-learning feedback loop.
+    Uses the new AutonomousLearningEngine.
     """
     log.info("Starting Celery Analytics Learning Loop Task...")
-    import asyncio
-    from agents.analytics_agent import analyse_and_learn, collect_all_analytics
-
     try:
-        collect_all_analytics()
-        result = asyncio.run(analyse_and_learn())
+        # Import legacy methods if they exist to keep compatibility,
+        # but the primary engine is now AutonomousLearningEngine
+        try:
+            import asyncio
+            from agents.analytics_agent import analyse_and_learn, collect_all_analytics
+            collect_all_analytics()
+            asyncio.run(analyse_and_learn())
+        except ImportError:
+            log.warning("Legacy analytics_agent not found, skipping legacy collection.")
+
+        from agents.autonomous_learning_engine import AutonomousLearningEngine
+        engine = AutonomousLearningEngine()
+        engine.run_learning_cycle()
+
         log.success("Celery Analytics Learning Loop completed.")
-        return result
+        return True
     except Exception as e:
         log.error(f"Celery Analytics Learning Loop failed: {e}")
         raise
