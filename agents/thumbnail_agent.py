@@ -15,7 +15,8 @@ from utils.logger import get_logger
 
 log = get_logger("ThumbnailAgent")
 
-POLLINATIONS_URL = "https://image.pollinations.ai/prompt/{prompt}?width=1280&height=720&nologo=true&enhance=true&seed={seed}"
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+IDEOGRAM_API_KEY = os.getenv("IDEOGRAM_API_KEY", "")
 
 NICHE_PALETTES = {
     "technology":  {"accent": (0,212,255),   "glow": (0,80,160),  "dark": (5,10,28)},
@@ -48,19 +49,108 @@ def get_resample_filter():
         return Image.LANCZOS
 
 
-def _fetch_image(prompt: str, seed: int = 42) -> Image.Image | None:
-    try:
-        encoded = urllib.parse.quote(prompt)
-        url     = POLLINATIONS_URL.format(prompt=encoded, seed=seed)
-        log.info("  Fetching image from Pollinations.ai...")
-        r = requests.get(url, timeout=90)
-        r.raise_for_status()
-        img = Image.open(io.BytesIO(r.content)).convert("RGB")
-        img = img.resize((1280, 720), get_resample_filter())
-        return img
-    except Exception as e:
-        log.warning(f"  Pollinations failed: {e}")
+def _fetch_image_hf_flux(prompt: str, output_path: str = None) -> Image.Image | None:
+    """
+    Generate image using HuggingFace Inference API.
+    Tries FLUX.1-schnell first, falls back to SDXL, then SD 1.5.
+    Returns PIL Image or None on complete failure.
+    """
+    if not HF_TOKEN:
+        log.warning("HF_TOKEN not set — cannot use HuggingFace image generation")
         return None
+
+    HF_MODELS = [
+        "black-forest-labs/FLUX.1-schnell",
+        "stabilityai/stable-diffusion-xl-base-1.0",
+        "runwayml/stable-diffusion-v1-5",
+    ]
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+
+    for model in HF_MODELS:
+        try:
+            url = f"https://api-inference.huggingface.co/models/{model}"
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "width": 1280,
+                    "height": 720,
+                    "num_inference_steps": 4,
+                    "guidance_scale": 0.0,
+                },
+            }
+            log.info(f"  Generating thumbnail via HuggingFace {model}...")
+            r = requests.post(url, headers=headers,
+                              json=payload, timeout=120)
+            if r.status_code == 200 and len(r.content) > 10_000:
+                img = Image.open(io.BytesIO(r.content)).convert("RGB")
+                img = img.resize((1280, 720), get_resample_filter())
+                log.info(f"  HuggingFace thumbnail success via {model}")
+                return img
+            else:
+                log.warning(f"  HF {model} returned {r.status_code} "
+                            f"({len(r.content)} bytes)")
+        except Exception as e:
+            log.warning(f"  HF {model} failed: {e}")
+            continue
+
+    return None
+
+
+def _fetch_image_ideogram(prompt: str) -> Image.Image | None:
+    """
+    Generate thumbnail via Ideogram v2 API (10 free images/day).
+    Best for thumbnails that need text rendered correctly inside the image.
+    """
+    if not IDEOGRAM_API_KEY:
+        return None
+    try:
+        url = "https://api.ideogram.ai/generate"
+        headers = {
+            "Api-Key": IDEOGRAM_API_KEY,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "image_request": {
+                "prompt": prompt,
+                "aspect_ratio": "ASPECT_16_9",
+                "model": "V_2",
+                "magic_prompt_option": "AUTO",
+            }
+        }
+        log.info("  Generating thumbnail via Ideogram...")
+        r = requests.post(url, headers=headers, json=payload, timeout=90)
+        if r.status_code == 200:
+            img_url = r.json()["data"][0]["url"]
+            img_data = requests.get(img_url, timeout=30).content
+            img = Image.open(io.BytesIO(img_data)).convert("RGB")
+            img = img.resize((1280, 720), get_resample_filter())
+            log.info("  Ideogram thumbnail success")
+            return img
+    except Exception as e:
+        log.warning(f"  Ideogram failed: {e}")
+    return None
+
+
+def _fetch_image(prompt: str, seed: int = 42) -> Image.Image | None:
+    """
+    Image generation with priority fallback chain:
+    1. Ideogram (best text rendering, 10/day free)
+    2. HuggingFace FLUX.1-schnell (best quality, needs HF_TOKEN)
+    3. HuggingFace SDXL fallback
+    4. Gradient background (always works, no API needed)
+    """
+    # Try Ideogram first if key is available
+    img = _fetch_image_ideogram(prompt)
+    if img:
+        return img
+
+    # Try HuggingFace FLUX chain
+    img = _fetch_image_hf_flux(prompt)
+    if img:
+        return img
+
+    log.warning("  All image APIs failed — using gradient background")
+    return None
 
 
 def _gradient_bg(palette: dict) -> Image.Image:

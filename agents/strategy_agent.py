@@ -180,13 +180,11 @@ def _wikipedia_trending() -> list[str]:
 
 def _youtube_trending(profile: dict) -> list[str]:
     try:
-        creds = Credentials(token=None,
-                            refresh_token=config.YOUTUBE_REFRESH_TOKEN,
-                            token_uri="https://oauth2.googleapis.com/token",
-                            client_id=config.YOUTUBE_CLIENT_ID,
-                            client_secret=config.YOUTUBE_CLIENT_SECRET)
-        creds.refresh(Request())
-        yt = build("youtube", "v3", credentials=creds)
+        from utils.yt_verify import get_youtube_service
+        yt = get_youtube_service()
+        if not yt:
+            log.warning("YouTube trending unavailable — skipping")
+            return []
 
         geo = "IN" if config.CHANNEL_LANGUAGE == "hi" else "US"
         trending = yt.videos().list(

@@ -85,40 +85,82 @@ async def ask(prompt: str, is_fast: bool = False, max_tokens: int = 4096) -> str
 
 import json, re
 
-def _parse_json(raw: str) -> dict:
-    if not raw: return {}
-    s = raw.find('{')
-    e = raw.rfind('}')
-    if s != -1 and e != -1:
-        raw = raw[s:e+1]
+def safe_parse_ai_response(text: str) -> dict | None:
+    """
+    Multi-strategy JSON extractor. Never raises.
+    Returns None if no valid JSON can be extracted.
+    """
+    import re, json
 
+    if not text or len(text.strip()) < 3:
+        return None
+
+    # Strip markdown fences
+    clean = re.sub(r'```(?:json)?\s*', '', text)
+    clean = re.sub(r'```\s*', '', clean).strip()
+
+    # Strategy 1: direct parse
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
+        result = json.loads(clean)
+        if result:
+            return result
+    except (json.JSONDecodeError, ValueError):
         pass
 
-    raw = re.sub(r'```json\s*', '', raw)
-    raw = re.sub(r'```\s*', '', raw)
-    raw = re.sub(r',\s*}', '}', raw)
-    raw = re.sub(r',\s*]', ']', raw)
+    # Strategy 2: find first { } or [ ] block
+    for pattern in [
+        r'\{(?:[^{}]|\{[^{}]*\})*\}',
+        r'\[(?:[^\[\]]|\[[^\[\]]*\])*\]',
+    ]:
+        match = re.search(pattern, clean, re.DOTALL)
+        if match:
+            try:
+                result = json.loads(match.group())
+                if result:
+                    return result
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+    # Strategy 3: fix trailing comma and retry
+    fixed = re.sub(r',\s*([}\]])', r'\1', clean)
     try:
-        return json.loads(raw)
-    except:
-        return {}
+        result = json.loads(fixed)
+        if result:
+            return result
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Strategy 4: line by line
+    for line in clean.splitlines():
+        line = line.strip()
+        if line and (line.startswith('{') or line.startswith('[')):
+            try:
+                result = json.loads(line)
+                if result:
+                    return result
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+    log.warning(f"safe_parse_ai_response: could not extract JSON "
+                f"from: {text[:120]!r}")
+    return None
 
 async def ask_json(prompt: str, is_fast: bool = False, max_tokens: int = 4096, retries: int = 2) -> dict:
     full_prompt = prompt + "\n\nIMPORTANT: Return STRICT JSON only. No markdown. No code blocks. Must be valid json.loads() input."
     last_err = None
+    raw = ""
     for attempt in range(retries + 1):
         try:
             raw = await ask(full_prompt, is_fast=is_fast, max_tokens=max_tokens)
-            res = _parse_json(raw)
+            res = safe_parse_ai_response(raw)
             if res: return res
             raise ValueError("Parsed JSON is empty.")
         except Exception as e:
             last_err = e
             log.warning(f"JSON parse failed (attempt {attempt+1}): {e}")
-    raise ValueError(f"AI returned invalid JSON: {last_err}")
+
+    log.warning(f"All JSON retries exhausted. Raw response snippet: {raw[:150]!r}")
+    return {}
 
 def get_status() -> dict:
     from router.failover_engine import get_best_provider
