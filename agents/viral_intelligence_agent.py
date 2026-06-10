@@ -11,6 +11,11 @@ from utils.logger import get_logger
 
 log = get_logger("ViralIntelligenceAgent")
 
+ML_READY = os.path.exists("models/viral_predictor.pkl")
+if not ML_READY:
+    log.warning("ML model not trained yet — using SEO heuristics. "
+                "Run autonomous_learning_engine after 10+ videos for real predictions.")
+
 class TrueMLScorer:
     """
     A real Machine Learning scorer that uses XGBoost and Random Forest

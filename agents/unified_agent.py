@@ -81,6 +81,33 @@ RETENTION RULES (strict):
 """
 
 
+import os
+
+PERPLEXITY_KEY = os.getenv("PERPLEXITY_API_KEY", "")
+
+def research_topic_realtime(topic_title: str) -> str:
+    """Get current facts and statistics for the script topic."""
+    if not PERPLEXITY_KEY:
+        return ""
+    try:
+        import requests
+        resp = requests.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers={"Authorization": f"Bearer {PERPLEXITY_KEY}",
+                     "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-sonar-small-128k-online",
+                "messages": [{"role": "user", "content":
+                    f"Give me 5 current facts, statistics, or recent developments "
+                    f"about: {topic_title}. Be concise, one sentence each."}],
+                "max_tokens": 300
+            },
+            timeout=20
+        ).json()
+        return resp["choices"][0]["message"]["content"]
+    except Exception:
+        return ""
+
 def _build_prompt(topic: dict, niche: str, lang: str, tone: str,
                   audience: str, channel: str, fmt: str) -> str:
     sections  = FORMAT_SECTIONS.get(fmt, FORMAT_SECTIONS["explainer"])
@@ -92,6 +119,7 @@ def _build_prompt(topic: dict, niche: str, lang: str, tone: str,
     angle     = topic.get("angle", "")
     keywords  = topic.get("keywords", [])
     kw_str    = ", ".join(keywords[:8]) if keywords else niche
+    realtime_facts = research_topic_realtime(title)
 
     return f"""You are a world-class YouTube content creator for channel "{channel}".
 
@@ -103,6 +131,9 @@ Niche: {niche} | Language: {lang} | Format: {fmt.upper()}
 Tone: {tone} | Audience: {audience}
 Seed Keywords: {kw_str}
 Opening Hook to build on: "{hook}"
+
+RECENT FACTS & RESEARCH (Incorporate these naturally):
+{realtime_facts if realtime_facts else "Use general knowledge."}
 
 LANGUAGE: {lang_note}
 

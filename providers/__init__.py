@@ -6,3 +6,4 @@ from .ai_horde_provider import AIHordeProvider
 from .cerebras_provider import CerebrasProvider
 from .openrouter_provider import OpenRouterProvider
 from .sambanova_provider import SambaNovaProvider
+from .nvidia_provider import NvidiaProvider

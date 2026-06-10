@@ -119,6 +119,14 @@ def _lower_third(text: str, duration: float) -> TextClip | None:
 # ── Main builder ──────────────────────────────────────────────
 
 def build_video(audio_path: str, script: dict, job_id: str) -> str:
+    global W, H
+    is_shorts = str(script.get("format", "")).lower() == "shorts"
+    if is_shorts:
+        W, H = 1080, 1920
+        log.info("📱 Render mode: SHORTS (9:16)")
+    else:
+        W, H = config.VIDEO_WIDTH, config.VIDEO_HEIGHT
+
     os.makedirs(config.OUTPUT_VIDEO, exist_ok=True)
     output_path = os.path.join(config.OUTPUT_VIDEO, f"{job_id}_video.mp4")
 

@@ -264,10 +264,31 @@ def run(manual_topic: str = None) -> dict:
 
         upload_data = asyncio.run(optimize_for_algorithm(upload_data))
 
+        # Content Safety Check
+        from agents.content_safety_engine import ContentSafetyEngine
+        safety_engine = ContentSafetyEngine()
+        safety_result = safety_engine.analyze_content(script["full_narration"], {"tags": seo["tags"], "overlap_score": 0.1})
+        if not safety_result["is_safe"]:
+            log.warning(f"Safety check failed. Content flagged. Action: {safety_result['action']}")
+            raise RuntimeError(f"Content safety check failed: {safety_result}")
+
         # ── 6. Upload ─────────────────────────────────────────
         start_upload = time.time()
         upload_result = _step(job_id, "UploadAgent", upload_video, video_path, thumb_path, upload_data)
         job["upload_duration"] = time.time() - start_upload
+
+        # ── 7. Community Post ─────────────────────────────────
+        if upload_result and "video_id" in upload_result:
+            try:
+                from agents.community_agent import generate_community_post
+                community_post = asyncio.run(
+                    generate_community_post(topic.get("title", config.CHANNEL_NICHE))
+                )
+                log.info(f"Community post ready: {community_post[:80]}...")
+                # Save community post logically for UI or future use
+                db.step_done(job_id, "CommunityAgent", output=community_post[:100])
+            except Exception as e:
+                log.warning(f"Community post generation failed: {e}")
 
         if upload_result and "video_id" in upload_result:
             upload_id = upload_result["video_id"]

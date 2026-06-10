@@ -19,6 +19,11 @@ ELEVENLABS_VOICE_IDS = {
     "male_deep":   "pNInz6obpgDQGcFmaJgB",  # Adam — warm authority
     "male_young":  "ErXwobaYiN019PkySvjV",  # Antoni — energetic
     "female_warm": "21m00Tcm4TlvDq8ikWAM",  # Rachel — clear and warm
+    # ElevenLabs Indian-accented voices (free tier compatible)
+    "en_in_male":   "pqHfZKP75CvOlQylNhV4",  # Bill — neutral, works for Indian content
+    "en_in_female": "ThT5KcBeYPX3keUQqHPh",  # Dorothy — clear, adaptable
+    "hi_male":      "pNInz6obpgDQGcFmaJgB",  # Adam — closest to deep Indian male
+    "hi_female":    "21m00Tcm4TlvDq8ikWAM",  # Rachel — warm, works for Hindi
 }
 ELEVENLABS_DEFAULT_VOICE = "narrator"
 
@@ -40,6 +45,95 @@ PLAYHT_VOICE_IDS = {
     "male_energetic":  "larry",
     "female_narrator": "nova",
 }
+
+BHASHINI_USER_ID  = os.getenv("BHASHINI_USER_ID", "")
+BHASHINI_API_KEY  = os.getenv("BHASHINI_ULCA_API_KEY", "")
+
+BHASHINI_VOICE_MAP = {
+    # (language, gender) → (source_language, voice_name)
+    ("hi",    "male"):   ("hi", "male"),
+    ("hi",    "female"): ("hi", "female"),
+    ("en-in", "male"):   ("en", "male"),
+    ("en-in", "female"): ("en", "female"),
+}
+
+def _tts_bhashini(text: str, output_path: str,
+                  language: str = "hi", gender: str = "male") -> bool:
+    if not BHASHINI_API_KEY:
+        return False
+    try:
+        # Step 1: Get pipeline config
+        config_url = "https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline"
+        headers = {"userID": BHASHINI_USER_ID, "ulcaApiKey": BHASHINI_API_KEY,
+                   "Content-Type": "application/json"}
+        config_payload = {
+            "pipelineTasks": [{"taskType": "tts", "config": {"language": {"sourceLanguage": language}}}],
+            "pipelineRequestConfig": {"pipelineId": "64392f96daac500b55c543cd"}
+        }
+        config_resp = requests.post(config_url, headers=headers, json=config_payload, timeout=30)
+        pipeline_config = config_resp.json()
+
+        # Step 2: Get service URL and config
+        service_id = pipeline_config["pipelineResponseConfig"][0]["config"][0]["serviceId"]
+        callback_url = pipeline_config["pipelineInferenceAPIEndPoint"]["callbackUrl"]
+        inf_key = pipeline_config["pipelineInferenceAPIEndPoint"]["inferenceApiKey"]
+
+        # Step 3: TTS inference
+        inf_headers = {inf_key["name"]: inf_key["value"], "Content-Type": "application/json"}
+        inf_payload = {
+            "pipelineTasks": [{
+                "taskType": "tts",
+                "config": {
+                    "language": {"sourceLanguage": language},
+                    "serviceId": service_id,
+                    "gender": gender,
+                    "samplingRate": 8000
+                }
+            }],
+            "inputData": {"input": [{"source": text}]}
+        }
+        inf_resp = requests.post(callback_url, headers=inf_headers, json=inf_payload, timeout=60)
+        if inf_resp.status_code == 200:
+            audio_b64 = inf_resp.json()["pipelineResponse"][0]["audio"][0]["audioContent"]
+            import base64
+            audio_bytes = base64.b64decode(audio_b64)
+            with open(output_path, "wb") as f:
+                f.write(audio_bytes)
+            return len(audio_bytes) > 1000
+    except Exception as e:
+        log.warning(f"[TTS] Bhashini failed: {e}")
+    return False
+
+FISH_AUDIO_KEY = os.getenv("FISH_AUDIO_API_KEY", "")
+
+# Indian voice reference IDs (from Fish Audio voice library)
+FISH_INDIAN_VOICES = {
+    "en_in_male":   "a8a1eb38-7e60-4e24-8278-93456c36bb77",
+    "en_in_female": "7f92f8ef-c9b9-4c24-8bef-3b8f3a3e44d9",
+}
+
+def _tts_fish_audio(text: str, output_path: str, voice_key: str) -> bool:
+    if not FISH_AUDIO_KEY:
+        return False
+    voice_id = FISH_INDIAN_VOICES.get(voice_key)
+    if not voice_id:
+        return False
+    try:
+        resp = requests.post(
+            f"https://api.fish.audio/v1/tts",
+            headers={"Authorization": f"Bearer {FISH_AUDIO_KEY}",
+                     "Content-Type": "application/json"},
+            json={"text": text, "reference_id": voice_id,
+                  "format": "mp3", "latency": "normal"},
+            timeout=60
+        )
+        if resp.status_code == 200 and len(resp.content) > 1000:
+            with open(output_path, "wb") as f:
+                f.write(resp.content)
+            return True
+    except Exception as e:
+        log.warning(f"Fish Audio failed: {e}")
+    return False
 
 def _tts_playht(text: str, output_path: str, voice_key: str = "female_narrator") -> bool:
     if not PLAYHT_API_KEY or not PLAYHT_USER_ID:
@@ -203,6 +297,28 @@ def _post_process(audio: AudioSegment) -> AudioSegment:
         pass
     return audio
 
+def _resolve_voice_key(lang: str, gender: str) -> str:
+    """Map language+gender to the correct voice_key for ElevenLabs/Kokoro/PlayHT."""
+    lang = lang.lower().strip()
+    gender = gender.lower().strip()
+
+    mapping = {
+        # English (US)
+        ("en",    "male"):   "male_deep",
+        ("en",    "female"): "female_warm",
+        ("en-us", "male"):   "male_deep",
+        ("en-us", "female"): "female_warm",
+        # Indian English
+        ("en-in", "male"):   "en_in_male",
+        ("en-in", "female"): "en_in_female",
+        # Hindi
+        ("hi",    "male"):   "hi_male",
+        ("hi",    "female"): "hi_female",
+        ("hi-in", "male"):   "hi_male",
+        ("hi-in", "female"): "hi_female",
+    }
+    return mapping.get((lang, gender), "narrator")
+
 def generate_voice(script_text: str, job_id: str) -> str:
     """
     Intelligently routes to TTS providers.
@@ -211,10 +327,11 @@ def generate_voice(script_text: str, job_id: str) -> str:
     """
     os.makedirs(config.OUTPUT_AUDIO, exist_ok=True)
     output_path = os.path.join(config.OUTPUT_AUDIO, f"{job_id}_voice.mp3")
-    voice = config.get_tts_voice()
+    voice = config.get_tts_voice() # kept for Edge-TTS only
+    voice_key = _resolve_voice_key(config.CHANNEL_LANGUAGE, config.TTS_VOICE_GENDER)
     lang = config.CHANNEL_LANGUAGE
 
-    log.info(f"🎙️ Voice: {voice} | lang: {lang}")
+    log.info(f"🎙️ Voice: {voice} | lang: {lang} | voice_key: {voice_key}")
     clean_text = _preprocess_text(script_text, lang)
 
     # Check Cache
@@ -227,6 +344,69 @@ def generate_voice(script_text: str, job_id: str) -> str:
 
     chunks = _split_text(clean_text)
 
+    # ── Bhashini TTS (Best for Indian Languages) ──────────
+    if BHASHINI_API_KEY and check_provider_health("bhashini"):
+        try:
+            tmp_files = []
+            all_ok = True
+            for i, chunk in enumerate(chunks):
+                tmp = os.path.join(config.OUTPUT_AUDIO, f"_tmp_{job_id}_{i}_bhashini.mp3")
+                b_lang, b_gender = BHASHINI_VOICE_MAP.get(
+                    (lang.lower().strip(), config.TTS_VOICE_GENDER.lower().strip()), ("en", "male")
+                )
+                if not _tts_bhashini(chunk, tmp, language=b_lang, gender=b_gender):
+                    all_ok = False
+                    break
+                tmp_files.append(tmp)
+
+            if all_ok and tmp_files:
+                section_pause = AudioSegment.silent(duration=400)
+                combined = AudioSegment.from_mp3(tmp_files[0])
+                for f in tmp_files[1:]:
+                    combined = combined + section_pause + AudioSegment.from_mp3(f)
+                combined = _post_process(combined)
+                combined.export(output_path, format="mp3", bitrate="192k",
+                                tags={"title": "AI Voice", "artist": config.CHANNEL_NAME})
+                for f in tmp_files:
+                    try: os.remove(f)
+                    except: pass
+                _save_cache(output_path, clean_text, voice)
+                record_success("bhashini")
+                return output_path
+        except Exception as e:
+            log.warning(f"[TTS Router] Bhashini pipeline failed: {e}")
+            record_failure("bhashini")
+
+    # ── Fish Audio TTS (Indian voices free tier) ──────────
+    if FISH_AUDIO_KEY and check_provider_health("fishaudio"):
+        try:
+            tmp_files = []
+            all_ok = True
+            for i, chunk in enumerate(chunks):
+                tmp = os.path.join(config.OUTPUT_AUDIO, f"_tmp_{job_id}_{i}_fish.mp3")
+                if not _tts_fish_audio(chunk, tmp, voice_key):
+                    all_ok = False
+                    break
+                tmp_files.append(tmp)
+
+            if all_ok and tmp_files:
+                section_pause = AudioSegment.silent(duration=400)
+                combined = AudioSegment.from_mp3(tmp_files[0])
+                for f in tmp_files[1:]:
+                    combined = combined + section_pause + AudioSegment.from_mp3(f)
+                combined = _post_process(combined)
+                combined.export(output_path, format="mp3", bitrate="192k",
+                                tags={"title": "AI Voice", "artist": config.CHANNEL_NAME})
+                for f in tmp_files:
+                    try: os.remove(f)
+                    except: pass
+                _save_cache(output_path, clean_text, voice)
+                record_success("fishaudio")
+                return output_path
+        except Exception as e:
+            log.warning(f"[TTS Router] Fish Audio pipeline failed: {e}")
+            record_failure("fishaudio")
+
     # ── ElevenLabs (most human, free 10K chars/month) ────────
     if ELEVENLABS_API_KEY and check_provider_health("elevenlabs"):
         try:
@@ -235,7 +415,7 @@ def generate_voice(script_text: str, job_id: str) -> str:
             for i, chunk in enumerate(chunks):
                 tmp = os.path.join(config.OUTPUT_AUDIO,
                                    f"_tmp_{job_id}_{i}_el.mp3")
-                if not _tts_elevenlabs(chunk, tmp, voice):
+                if not _tts_elevenlabs(chunk, tmp, voice_key):
                     all_ok = False
                     break
                 tmp_files.append(tmp)
@@ -265,7 +445,8 @@ def generate_voice(script_text: str, job_id: str) -> str:
             for i, chunk in enumerate(chunks):
                 tmp = os.path.join(config.OUTPUT_AUDIO,
                                    f"_tmp_{job_id}_{i}_kokoro.mp3")
-                if not _tts_kokoro(chunk, tmp, voice):
+                kokoro_voice = KOKORO_VOICES.get(voice_key, KOKORO_DEFAULT_VOICE)
+                if not _tts_kokoro(chunk, tmp, kokoro_voice):
                     all_ok = False
                     break
                 tmp_files.append(tmp)
@@ -295,7 +476,7 @@ def generate_voice(script_text: str, job_id: str) -> str:
             for i, chunk in enumerate(chunks):
                 tmp = os.path.join(config.OUTPUT_AUDIO,
                                    f"_tmp_{job_id}_{i}_playht.mp3")
-                if not _tts_playht(chunk, tmp, voice):
+                if not _tts_playht(chunk, tmp, voice_key):
                     all_ok = False
                     break
                 tmp_files.append(tmp)
