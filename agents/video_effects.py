@@ -1,7 +1,6 @@
 import numpy as np
 from PIL import Image
-from moviepy import VideoClip, concatenate_videoclips
-from moviepy.video.fx import CrossFadeIn, CrossFadeOut
+from moviepy.editor import VideoClip, concatenate_videoclips
 
 def _ken_burns(clip, zoom_start, zoom_end, pan_x, pan_y, duration):
     try:
@@ -112,11 +111,11 @@ def apply_cinematic_grade(clip, style="cinematic_teal_orange"):
 
         return (np.clip(img, 0, 1) * 255).astype(np.uint8)
 
-    return clip.image_transform(grade_frame)
+    return clip.fl_image(grade_frame)
 
 def cross_dissolve(clip1, clip2, duration=0.7):
-    c1 = CrossFadeOut(duration).apply(clip1)
-    c2 = CrossFadeIn(duration).apply(clip2)
+    c1 = clip1.crossfadeout(duration)
+    c2 = clip2.crossfadein(duration)
     return concatenate_videoclips([c1, c2], method="compose", padding=-duration)
 
 def zoom_transition(clip1, clip2, duration=0.5):

@@ -9,8 +9,48 @@ Returns rich metadata for the dashboard.
 
 import time
 from utils.logger import get_logger
+from config import config
 
 log = get_logger("YTVerify")
+
+
+def get_youtube_service(scopes=None):
+    """
+    Returns an authenticated YouTube API service object.
+    Handles token refresh automatically. Falls back to re-auth if needed.
+    Never raises on credential issues — returns None instead so callers
+    can skip YouTube operations gracefully.
+    """
+    from googleapiclient.discovery import build
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from google.auth.exceptions import RefreshError
+
+    if scopes is None:
+        scopes = [
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.readonly",
+            "https://www.googleapis.com/auth/youtube.force-ssl",
+        ]
+
+    try:
+        creds = Credentials(
+            token=None,
+            refresh_token=config.YOUTUBE_REFRESH_TOKEN,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=config.YOUTUBE_CLIENT_ID,
+            client_secret=config.YOUTUBE_CLIENT_SECRET,
+        )
+        creds.refresh(Request())
+        return build("youtube", "v3", credentials=creds)
+    except RefreshError as e:
+        log.warning(f"YouTube token refresh failed (invalid_grant): {e}")
+        log.warning("YouTube operations will be skipped this run. "
+                    "Re-run auth_setup.py to re-authenticate.")
+        return None
+    except Exception as e:
+        log.warning(f"YouTube service init failed: {e}")
+        return None
 
 
 def verify_upload(video_id: str, max_wait_sec: int = 300) -> dict:

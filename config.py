@@ -25,6 +25,12 @@ class Config:
     NVIDIA_API_KEY      = os.getenv("NVIDIA_API_KEY",      "")
     CEREBRAS_API_KEY    = os.getenv("CEREBRAS_API_KEY",    "")
     OPENROUTER_API_KEY  = os.getenv("OPENROUTER_API_KEY",  "")
+    SAMBANOVA_API_KEY   = os.getenv("SAMBANOVA_API_KEY",   "")
+    HF_TOKEN            = os.getenv("HF_TOKEN",            "")
+    IDEOGRAM_API_KEY    = os.getenv("IDEOGRAM_API_KEY",    "")
+    ELEVENLABS_API_KEY  = os.getenv("ELEVENLABS_API_KEY",  "")
+    PLAYHT_API_KEY      = os.getenv("PLAYHT_API_KEY",      "")
+    PLAYHT_USER_ID      = os.getenv("PLAYHT_USER_ID",      "")
     FLUX_API_KEY        = os.getenv("FLUX_API_KEY",        "")
     SDXL_API_KEY        = os.getenv("SDXL_API_KEY",        "")
 
@@ -37,11 +43,10 @@ class Config:
     COMFYUI_URL          = os.getenv("COMFYUI_URL",          "")
 
     # ── PAID PROVIDERS — BLOCKED ──────────────────────────────
-    # Together AI, DeepInfra, SambaNova are not part of the approved
+    # Together AI, DeepInfra are not part of the approved
     # free architecture. Any configured values are silently ignored.
     # These constants remain for backward-compatibility detection only.
-    _BLOCKED_PROVIDERS = ["TOGETHER_API_KEY", "DEEPINFRA_API_KEY",
-                          "SAMBANOVA_API_KEY"]
+    _BLOCKED_PROVIDERS = ["TOGETHER_API_KEY", "DEEPINFRA_API_KEY"]
 
     # ── Media APIs ────────────────────────────────────────────
     PEXELS_API_KEY      = os.getenv("PEXELS_API_KEY",      "")
@@ -131,8 +136,7 @@ config = Config()
 def _check_blocked_providers():
     """Warn if any blocked paid provider is set in environment."""
     blocked_detected = []
-    blocked_env_keys = ["TOGETHER_API_KEY", "DEEPINFRA_API_KEY",
-                        "SAMBANOVA_API_KEY"]
+    blocked_env_keys = ["TOGETHER_API_KEY", "DEEPINFRA_API_KEY"]
     for key in blocked_env_keys:
         val = os.getenv(key, "")
         if val and not val.startswith("your_"):
@@ -190,6 +194,8 @@ def check_keys():
         Config.NVIDIA_API_KEY and not Config.NVIDIA_API_KEY.startswith("your_"),
         Config.CEREBRAS_API_KEY and not Config.CEREBRAS_API_KEY.startswith("your_"),
         Config.OPENROUTER_API_KEY and not Config.OPENROUTER_API_KEY.startswith("your_"),
+        Config.HF_TOKEN and not Config.HF_TOKEN.startswith("your_"),
+        Config.ELEVENLABS_API_KEY and not Config.ELEVENLABS_API_KEY.startswith("your_"),
         Config.AI_HORDE_ENABLED,
         Config.OLLAMA_URL,
     ])

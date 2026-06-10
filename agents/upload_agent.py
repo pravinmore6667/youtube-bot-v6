@@ -22,13 +22,11 @@ SCOPES = ["https://www.googleapis.com/auth/youtube.upload",
 
 
 def _yt_client():
-    creds = Credentials(token=None, refresh_token=config.YOUTUBE_REFRESH_TOKEN,
-                        token_uri="https://oauth2.googleapis.com/token",
-                        client_id=config.YOUTUBE_CLIENT_ID,
-                        client_secret=config.YOUTUBE_CLIENT_SECRET,
-                        scopes=SCOPES)
-    creds.refresh(Request())
-    return build("youtube", "v3", credentials=creds)
+    from utils.yt_verify import get_youtube_service
+    yt = get_youtube_service(scopes=SCOPES)
+    if not yt:
+        raise RuntimeError("YouTube authentication failed — cannot upload")
+    return yt
 
 
 def upload_video(video_path: str, thumbnail_path: str, seo: dict) -> dict:

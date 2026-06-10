@@ -8,6 +8,11 @@ import os, uuid, requests, tempfile, subprocess, math, shutil, time, gc
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 import numpy as np
+from agents.video_effects import (
+    apply_ken_burns,
+    apply_cinematic_grade,
+    build_video_with_transitions,
+)
 from moviepy.editor import (
     VideoFileClip, AudioFileClip, CompositeVideoClip,
     TextClip, concatenate_videoclips, ColorClip, ImageClip
@@ -42,6 +47,11 @@ def _fetch_music(mood: str = "ambient background") -> str | None:
                     if mr.status_code == 200:
                         path = os.path.join(config.OUTPUT_MUSIC, f"_music_{uuid.uuid4().hex[:8]}.mp3")
                         with open(path, "wb") as f: f.write(mr.content)
+                        if not os.path.exists(path) or os.path.getsize(path) < 50_000:
+                            log.warning(f"Downloaded music invalid: {os.path.getsize(path)} bytes")
+                            if os.path.exists(path):
+                                os.remove(path)
+                            return None
                         log.info(f"  Music downloaded: {path}")
                         return path
     except Exception as e:
@@ -71,36 +81,6 @@ def _get_clip_for_query(query: str, dest: str) -> str | None:
     return path
 
 
-
-
-    try:
-        if not config.ENABLE_ZOOM_EFFECTS:
-            return clip
-        dur = clip.duration
-        if zoom_direction == "in":
-            return clip.fl(lambda gf, t: gf(t) if True else gf(t)).resize(
-                lambda t: 1 + (zoom_amount - 1) * (t / dur)
-            ).crop(x_center=W/2, y_center=H/2, width=W, height=H)
-        else:
-            return clip.resize(
-                lambda t: zoom_amount - (zoom_amount - 1) * (t / dur)
-            ).crop(x_center=W/2, y_center=H/2, width=W, height=H)
-    except Exception:
-        return clip
-
-
-def _color_grade(clip):
-    try:
-        def grade(frame):
-            arr  = frame.astype(np.float32)
-            arr  = np.clip((arr - 128) * 1.15 + 128, 0, 255)
-            grey = 0.299*arr[:,:,0] + 0.587*arr[:,:,1] + 0.114*arr[:,:,2]
-            grey = grey[:,:,np.newaxis]
-            arr  = np.clip(grey + (arr - grey) * 1.20, 0, 255)
-            return arr.astype(np.uint8)
-        return clip.fl_image(grade)
-    except Exception:
-        return clip
 
 
 def _section_title_card(heading: str, duration: float) -> TextClip | None:
@@ -203,8 +183,8 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
                             reps = math.ceil(seg_dur / vc.duration)
                             vc   = concatenate_videoclips([vc] * reps)
                         vc = vc.subclip(0, seg_dur)
-                        vc = _ken_burns(vc, zoom_dir)
-                        vc = _color_grade(vc)
+                        vc = apply_ken_burns(vc, section_index=i, duration=seg_dur)
+                        vc = apply_cinematic_grade(vc, style="cinematic_teal_orange")
                     else:
                         vc = ColorClip((W, H), color=(8, 12, 28), duration=seg_dur)
 
@@ -235,7 +215,7 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
                     video_clips.append(fb)
 
             if video_clips:
-                video = concatenate_videoclips(video_clips, method="compose")
+                video = build_video_with_transitions(video_clips, transition="cross_dissolve")
                 if video.duration > total_dur:
                     video = video.subclip(0, total_dur)
                 elif video.duration < total_dur:
@@ -246,6 +226,19 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
 
             try:
                 music_path = music_future.result()
+                # Validate downloaded music
+                if not music_path or not os.path.exists(music_path) or \
+                   os.path.getsize(music_path) < 50_000:
+                    log.warning("Downloaded music invalid — trying MusicGen")
+                    from utils.music_gen import generate_background_music
+                    music_path = generate_background_music(
+                        niche=config.CHANNEL_NICHE,
+                        duration_hint=int(total_dur),
+                        output_path=os.path.join(
+                            "output/music",
+                            f"_music_{job_id}.mp3"
+                        )
+                    )
             except Exception as e:
                 log.warning(f"Failed to fetch background music: {e}")
                 music_path = None
@@ -257,8 +250,8 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
                     music_size = os.path.getsize(music_path)
                     log.info(f"Music path: {music_path}, size: {music_size} bytes")
 
-                    if music_size < 1000:
-                        log.warning("Music file is too small, likely invalid. Proceeding without music.")
+                    if music_size < 50_000:
+                        log.warning("Music file too small (<50KB) — likely corrupt. Skipping.")
                         raise ValueError("Invalid music file size")
 
                     voice_audio  = AudioSegment.from_mp3(audio_path)
