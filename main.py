@@ -63,8 +63,6 @@ def banner():
         providers.append("OpenRouter")
     if config.OLLAMA_URL:
         providers.append("Ollama")
-    if config.POLLINATIONS_ENABLED:
-        providers.append("Pollinations")
     if config.AI_HORDE_ENABLED:
         providers.append("AI-Horde")
     prov_str = " → ".join(providers) if providers else "⚠ No providers configured!"
@@ -168,9 +166,6 @@ def _startup_self_test() -> dict:
     if getattr(C, 'OLLAMA_URL', None):
         free_providers_found.append("Ollama")
         passed.append("PROVIDER: Ollama local API present")
-    if C.POLLINATIONS_ENABLED:
-        free_providers_found.append("Pollinations")
-        passed.append("PROVIDER: Pollinations enabled (always-free)")
     if C.AI_HORDE_ENABLED:
         free_providers_found.append("AI-Horde")
         passed.append("PROVIDER: AI-Horde enabled (always-free)")
@@ -271,7 +266,6 @@ def main():
         Config.NVIDIA_API_KEY and not Config.NVIDIA_API_KEY.startswith("your_"),
         Config.CEREBRAS_API_KEY and not Config.CEREBRAS_API_KEY.startswith("your_"),
         Config.OPENROUTER_API_KEY and not Config.OPENROUTER_API_KEY.startswith("your_"),
-        Config.POLLINATIONS_ENABLED,
         Config.AI_HORDE_ENABLED,
         getattr(Config, 'OLLAMA_URL', None)
     ])
