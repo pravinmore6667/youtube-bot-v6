@@ -123,7 +123,29 @@ Return ONLY the final average score as an integer (e.g., 85).
             final_score = int((cv_score + ai_score) / 2)
             log.success(f"Selected clip {clip_path} with final cinematic score: {final_score}/100 (CV: {cv_score}, AI: {ai_score})")
         except Exception:
+            final_score = cv_score
             log.success(f"Selected clip {clip_path} with CV cinematic score: {cv_score}/100")
+
+        # Integration: Kling Fallback
+        if final_score < 40:
+            log.info(f"Cinematic score {final_score} < 40. Attempting Kling AI fallback.")
+            from utils.video_gen import generate_broll_kling, generate_broll_svd
+            import uuid
+            kling_path = os.path.join(dest, f"kling_{uuid.uuid4().hex[:8]}.mp4")
+            kling_result = generate_broll_kling(
+                prompt=f"cinematic {prompt}, 4K, professional, no text",
+                output_path=kling_path
+            )
+            if kling_result:
+                log.success(f"Kling B-Roll Fallback success: {kling_result}")
+                return kling_result
+
+            # SVD Fallback if Kling failed
+            svd_path = os.path.join(dest, f"svd_{uuid.uuid4().hex[:8]}.mp4")
+            svd_result = generate_broll_svd(prompt=f"cinematic {prompt}, high quality", output_path=svd_path)
+            if svd_result:
+                log.success(f"SVD B-Roll Fallback success: {svd_result}")
+                return svd_result
 
         return clip_path
 

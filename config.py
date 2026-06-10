@@ -6,7 +6,7 @@ FREE-ONLY ARCHITECTURE:
   Approved providers: GEMINI, GROQ, CEREBRAS, OPENROUTER (free models),
                       AI_HORDE
   Optional (free tier):  NVIDIA
-  Blocked/removed:       TOGETHER, DEEPINFRA, SAMBANOVA, GROK
+  Blocked/removed:       TOGETHER, DEEPINFRA
 """
 import os
 import logging
@@ -91,12 +91,17 @@ class Config:
     TTS_VOLUME          = os.getenv("TTS_VOLUME",  "+0%")
     TTS_PITCH           = os.getenv("TTS_PITCH",   "+0Hz")
 
+    TTS_VOICE_EN_IN_MALE   = os.getenv("TTS_VOICE_EN_IN_MALE",   "en-IN-PrabhatNeural")
+    TTS_VOICE_EN_IN_FEMALE = os.getenv("TTS_VOICE_EN_IN_FEMALE", "en-IN-NeerjaNeural")
+
     @classmethod
     def get_tts_voice(cls):
         lang   = cls.CHANNEL_LANGUAGE.lower()
         gender = cls.TTS_VOICE_GENDER.lower()
-        if lang == "hi":
+        if lang in ("hi", "hi-in"):
             return cls.TTS_VOICE_HI_MALE if gender == "male" else cls.TTS_VOICE_HI_FEMALE
+        if lang == "en-in":
+            return cls.TTS_VOICE_EN_IN_MALE if gender == "male" else cls.TTS_VOICE_EN_IN_FEMALE
         return cls.TTS_VOICE_EN_MALE if gender == "male" else cls.TTS_VOICE_EN_FEMALE
 
     # ── Schedule ──────────────────────────────────────────────
