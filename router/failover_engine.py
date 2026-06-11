@@ -25,8 +25,21 @@ def get_ordered_providers(tier_filter: int = None) -> List[str]:
 
         candidates.append((score, provider.tier, name))
 
-    # Sort by Tier (lowest first), then Score (highest first)
-    candidates.sort(key=lambda x: (x[1], -x[0]))
+    # Apply global AI provider priority order
+    PRIORITY_ORDER = {
+        "groq": 1,
+        "cerebras": 2,
+        "deepseek": 3,
+        "together": 4,
+        "mistral": 5,
+        "sambanova": 6,
+        "nvidia": 7,
+        "openrouter": 8,
+        "gemini": 9,
+    }
+
+    # Sort by Priority Order (lowest first), then Score (highest first)
+    candidates.sort(key=lambda x: (PRIORITY_ORDER.get(x[2], 99), -x[0]))
     return [c[2] for c in candidates]
 
 def get_best_provider(tier_filter: int = None) -> str:

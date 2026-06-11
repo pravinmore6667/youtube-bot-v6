@@ -17,9 +17,13 @@ class SambaNovaProvider(BaseProvider):
                        is_fast: bool = False,
                        max_tokens: int = 4096) -> str:
         url = "https://api.sambanova.ai/v1/chat/completions"
-        # Use 405B for quality, 70B for speed
-        model = "Meta-Llama-3.1-70B-Instruct" if is_fast else \
-                "Meta-Llama-3.1-405B-Instruct"
+        models = [
+            "Meta-Llama-3.3-70B-Instruct",
+            "Qwen2.5-72B-Instruct",
+            "Meta-Llama-3.1-8B-Instruct",
+        ]
+        # Use 70B/72B for quality, 8B for speed
+        model = "Meta-Llama-3.1-8B-Instruct" if is_fast else "Meta-Llama-3.3-70B-Instruct"
         self.current_model = model
         headers = {
             "Authorization": f"Bearer {config.SAMBANOVA_API_KEY}",

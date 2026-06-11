@@ -445,8 +445,8 @@ body { background: var(--surface); font-family: 'Segoe UI', system-ui, sans-seri
         <div class="mb-2">
           <label class="form-label text-muted" style="font-size:.8rem">Language</label>
           <select class="form-select form-select-sm" id="s-lang">
-            <option value="en">English</option>
             <option value="hi">Hindi</option>
+            <option value="en">English</option>
           </select>
         </div>
         <div class="mb-2">

@@ -61,12 +61,13 @@ def burn_captions(video_path: str, srt_path: str) -> str:
         "-preset", "fast", "-crf", "22",
         video_path + "_cap.mp4"
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    if res.returncode == 0:
+    from utils.ffmpeg_runner import run_ffmpeg
+    success = run_ffmpeg(cmd, timeout=600, stuck_threshold=120)
+    if success:
         os.replace(video_path + "_cap.mp4", video_path)
         log.success("Captions burned")
     else:
-        log.warning(f"Caption burn failed: {res.stderr[:150]}")
+        log.warning("Caption burn failed or timed out")
     return video_path
 
 

@@ -8,6 +8,7 @@ import os, uuid, requests, tempfile, subprocess, math, shutil, time, gc
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 import numpy as np
+from utils.ffmpeg_runner import run_ffmpeg
 from agents.video_effects import (
     apply_ken_burns,
     apply_cinematic_grade,
@@ -59,6 +60,26 @@ def _fetch_music(mood: str = "ambient background") -> str | None:
         raise
     return None
 
+
+MAX_PARALLEL_DOWNLOADS = 3
+
+def download_all_clips(prompts: list, download_fn, timeout_per: int = 90) -> dict:
+    import concurrent.futures
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(
+            max_workers=MAX_PARALLEL_DOWNLOADS) as executor:
+        future_to_prompt = {
+            executor.submit(download_fn, p): p for p in prompts
+        }
+        for future in concurrent.futures.as_completed(
+                future_to_prompt, timeout=len(prompts) * timeout_per):
+            prompt = future_to_prompt[future]
+            try:
+                results[prompt] = future.result(timeout=timeout_per)
+            except Exception as e:
+                log.warning(f"Clip download failed for '{prompt}': {e}")
+                results[prompt] = None
+    return results
 
 def _intelligent_clip_selector(query: str, dest: str) -> str | None:
     import asyncio
@@ -148,41 +169,36 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
 
         tmp = tempfile.mkdtemp()
         try:
-            import concurrent.futures as cf2
-            clip_futures = {}
-            with cf2.ThreadPoolExecutor(max_workers=4) as clip_ex:
-                for i, section in enumerate(sections):
-                    query = (section.get("broll_cue") or section.get("heading") or config.CHANNEL_NICHE)
-                    query = query[:60].split(",")[0].strip()
-                    clip_futures[clip_ex.submit(_intelligent_clip_selector, query, tmp)] = i
+            queries = []
+            for i, section in enumerate(sections):
+                query = (section.get("broll_cue") or section.get("heading") or config.CHANNEL_NICHE)
+                query = query[:60].split(",")[0].strip()
+                queries.append((i, query))
+
+            def _download_wrapper(item):
+                i, query = item
+                return i, _intelligent_clip_selector(query, tmp)
+
+            results = download_all_clips(queries, _download_wrapper)
 
             clip_paths = {}
-            for future in cf2.as_completed(clip_futures):
-                idx = clip_futures[future]
-                try: clip_paths[idx] = future.result()
-                except Exception as e:
-                    log.warning(f"Clip {idx} failed: {e}")
-                    clip_paths[idx] = None
+            for item, res in results.items():
+                if res:
+                    i, path = res
+                    clip_paths[i] = path
 
             video_clips = []
             zoom_dirs   = ["in", "out", "in", "out", "in"]
 
-            for i, section in enumerate(sections):
-                clip_path = clip_paths.get(i)
-                zoom_dir  = zoom_dirs[i % len(zoom_dirs)]
-                progress  = (i + 1) / n_sections
-
+            def render_section(section_data, attempt=1, max_attempts=2):
                 try:
+                    section, i, clip_path, progress = section_data
+
                     if clip_path and os.path.exists(clip_path):
                         log.info(f"Video path: {clip_path}")
                         log.info(f"Video size: {os.path.getsize(clip_path)} bytes")
 
-                        probe = subprocess.run(
-                            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", clip_path],
-                            capture_output=True, text=True
-                        )
-
-                        if os.path.getsize(clip_path) < 100000 or probe.returncode != 0:
+                        if os.path.getsize(clip_path) < 100000:
                             raise ValueError(f"Invalid video: {clip_path}")
 
                         vc = VideoFileClip(clip_path, audio=False)
@@ -210,7 +226,27 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
                     lower = _lower_third(section.get("heading",""), seg_dur)
                     if lower: overlays.extend(lower)
 
-                    vc = CompositeVideoClip(overlays, size=(W, H))
+                    return CompositeVideoClip(overlays, size=(W, H))
+
+                except Exception as e:
+                    if attempt < max_attempts:
+                        log.warning(f"Section render failed: {e} — retrying (attempt {attempt+1})")
+                        # Nullify clip_path so it uses fallback color clip
+                        section_data = (section_data[0], section_data[1], None, section_data[3])
+                        return render_section(section_data, attempt + 1, max_attempts)
+                    log.error(f"Section render permanently failed: {e}")
+                    return None
+
+            for i, section in enumerate(sections):
+                clip_path = clip_paths.get(i)
+                zoom_dir  = zoom_dirs[i % len(zoom_dirs)]
+                progress  = (i + 1) / n_sections
+
+                try:
+                    section_data = (section, i, clip_path, progress)
+                    vc = render_section(section_data)
+                    if vc is None:
+                        vc = ColorClip((W, H), color=(10, 14, 30), duration=seg_dur)
                     video_clips.append(vc)
 
                 except Exception as e:
@@ -338,3 +374,16 @@ def build_video(audio_path: str, script: dict, job_id: str) -> str:
                     time.sleep(1)
 
     return output_path
+
+import atexit, glob, tempfile as _tempfile
+
+def _cleanup_pipeline_temps():
+    tmp = _tempfile.gettempdir()
+    for pattern in ["tmp*/**.mp4", "tmp*/**.wav", "tmp*/**.png"]:
+        for f in glob.glob(os.path.join(tmp, pattern)):
+            try:
+                os.unlink(f)
+            except Exception:
+                pass
+
+atexit.register(_cleanup_pipeline_temps)

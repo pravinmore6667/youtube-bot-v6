@@ -4,6 +4,7 @@ main.py — Single entry point.
 python main.py                           → 24/7 bot (scheduler + dashboard)
 python main.py --run-now                 → One video now (auto topic)
 python main.py --run-now --topic "X"     → One video on topic X
+python main.py --lang "hi"               → Run with specific language (default hi)
 python main.py --niche technology        → Set niche then start bot
 python main.py --dashboard               → Dashboard only
 python main.py --strategy                → Run weekly strategy
@@ -163,6 +164,12 @@ def _startup_self_test() -> dict:
     if C.OPENROUTER_API_KEY and not C.OPENROUTER_API_KEY.startswith("your_"):
         free_providers_found.append("OpenRouter")
         passed.append("PROVIDER: OpenRouter API key present")
+    if getattr(C, 'TOGETHER_API_KEY', None) and not getattr(C, 'TOGETHER_API_KEY', '').startswith("your_"):
+        free_providers_found.append("Together")
+        passed.append("PROVIDER: Together API key present")
+    if getattr(C, 'DEEPSEEK_API_KEY', None) and not getattr(C, 'DEEPSEEK_API_KEY', '').startswith("your_"):
+        free_providers_found.append("DeepSeek")
+        passed.append("PROVIDER: DeepSeek API key present")
     if getattr(C, 'OLLAMA_URL', None):
         free_providers_found.append("Ollama")
         passed.append("PROVIDER: Ollama local API present")
@@ -176,8 +183,7 @@ def _startup_self_test() -> dict:
         passed.append(f"PROVIDER: {len(free_providers_found)} free provider(s) active: {', '.join(free_providers_found)}")
 
     # Check blocked providers
-    blocked_env = {"TOGETHER_API_KEY": "Together AI",
-                   "DEEPINFRA_API_KEY": "DeepInfra",
+    blocked_env = {"DEEPINFRA_API_KEY": "DeepInfra",
                    "SAMBANOVA_API_KEY": "SambaNova",
                    "GROK_API_KEY": "Grok (xAI)"}
     for env_key, name in blocked_env.items():
@@ -230,12 +236,21 @@ def _startup_self_test() -> dict:
     return {"passed": passed, "failed": failed, "warnings": warnings}
 
 
+import argparse
+
 def main():
     from config import Config
-    args = sys.argv[1:]
+    parser = argparse.ArgumentParser(description="YouTube Automation Pipeline")
+    parser.add_argument("--lang", default="hi", help="Language code (default: hi)")
+    args, unknown = parser.parse_known_args()
+    args_list = sys.argv[1:]
+
+    if args.lang:
+        Config.CHANNEL_LANGUAGE = args.lang
+        db.set_setting("CHANNEL_LANGUAGE", args.lang)
 
     # ── Startup Self-Test ─────────────────────────────────────
-    if "--startup-check" in args:
+    if "--startup-check" in args_list:
         print(f"\n{Fore.CYAN}━━━ STARTUP SELF-TEST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
         result = _startup_self_test()
 
@@ -279,26 +294,26 @@ def main():
     db.init_db()
 
     # ── List voices ───────────────────────────────────────────
-    if "--list-voices" in args:
+    if "--list-voices" in args_list:
         import subprocess
         print("\n🎙️  Available voices:\n")
         subprocess.run(["edge-tts", "--list-voices"])
         return
 
     # ── Setup check ───────────────────────────────────────────
-    if "--setup-check" in args:
+    if "--setup-check" in args_list:
         from utils.check_setup import run_all
         run_all()
         return
 
     # ── Show videos ───────────────────────────────────────────
-    if "--videos" in args:
+    if "--videos" in args_list:
         from utils.show_videos import show
         show()
         return
 
     # ── Cache stats ───────────────────────────────────────────
-    if "--cache-stats" in args:
+    if "--cache-stats" in args_list:
         from utils.cache import get_stats
         s = get_stats()
         print(f"\n📦 Cache Statistics:")
@@ -310,7 +325,7 @@ def main():
         return
 
     # ── Library stats ─────────────────────────────────────────
-    if "--library" in args:
+    if "--library" in args_list:
         from utils.content_library import get_library_stats
         s = get_library_stats()
         print(f"\n📚 Content Library:")
@@ -321,10 +336,10 @@ def main():
         return
 
     # ── Set niche ─────────────────────────────────────────────
-    if "--niche" in args:
-        idx = args.index("--niche")
-        if idx + 1 < len(args):
-            niche = args[idx + 1]
+    if "--niche" in args_list:
+        idx = args_list.index("--niche")
+        if idx + 1 < len(args_list):
+            niche = args_list[idx + 1]
             from agents.niche_profiles import get_profile, NICHE_PROFILES
             if niche not in NICHE_PROFILES:
                 print(f"Unknown niche '{niche}'. Options: {', '.join(NICHE_PROFILES.keys())}")
@@ -335,18 +350,18 @@ def main():
             db.set_setting("CHANNEL_TONE",     profile["tone"])
             load_live_config()
             print(f"✅ Niche set to: {profile['emoji']} {profile['label']}")
-            if "--run-now" not in args:
+            if "--run-now" not in args_list:
                 return
 
     banner()
 
     # ── One-shot run ──────────────────────────────────────────
-    if "--run-now" in args:
+    if "--run-now" in args_list:
         topic = None
-        if "--topic" in args:
-            idx = args.index("--topic")
-            if idx + 1 < len(args):
-                topic = args[idx + 1]
+        if "--topic" in args_list:
+            idx = args_list.index("--topic")
+            if idx + 1 < len(args_list):
+                topic = args_list[idx + 1]
         from pipeline import run
         log.info(f"Manual run — topic: {topic or 'auto'}")
         job = run(manual_topic=topic)
@@ -356,20 +371,20 @@ def main():
         return
 
     # ── Dashboard only ────────────────────────────────────────
-    if "--dashboard" in args:
+    if "--dashboard" in args_list:
         from dashboard.app import start_dashboard
         log.info(f"Dashboard only → http://0.0.0.0:{config.PORT}")
         start_dashboard(background=False)
         return
 
     # ── Weekly strategy ───────────────────────────────────────
-    if "--strategy" in args:
+    if "--strategy" in args_list:
         from agents.strategy_agent import generate_weekly_strategy
         generate_weekly_strategy()
         return
 
     # ── Analytics ─────────────────────────────────────────────
-    if "--analyse" in args:
+    if "--analyse" in args_list:
         from agents.analytics_agent import collect_all_analytics, analyse_and_learn
         collect_all_analytics()
         analyse_and_learn()

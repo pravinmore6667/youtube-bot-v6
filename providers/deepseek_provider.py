@@ -3,24 +3,24 @@ from config import config
 from router.provider_manager import BaseProvider, manager
 from utils.logger import get_logger
 
-log = get_logger("MistralProvider")
+log = get_logger("DeepSeekProvider")
 
-class MistralProvider(BaseProvider):
-    name = "mistral"
+class DeepSeekProvider(BaseProvider):
+    name = "deepseek"
     tier = 2
     timeout = 30
 
     def is_configured(self) -> bool:
-        return bool(getattr(config, "MISTRAL_API_KEY", None))
+        return bool(getattr(config, "DEEPSEEK_API_KEY", None))
 
     async def generate(self, prompt: str, is_fast: bool = False, max_tokens: int = 4096) -> str:
-        url = "https://api.mistral.ai/v1/chat/completions"
+        url = "https://api.deepseek.com/v1/chat/completions"
         headers = {
-            "Authorization": f"Bearer {config.MISTRAL_API_KEY}",
+            "Authorization": f"Bearer {config.DEEPSEEK_API_KEY}",
             "Content-Type": "application/json"
         }
-        models = ["mistral-small-latest", "open-mistral-7b", "mistral-large-latest"]
-        model = models[0] if is_fast else models[2]
+        models = ["deepseek-chat", "deepseek-reasoner"]
+        model = models[0] if is_fast else models[1]
         self.current_model = model
 
         payload = {
@@ -36,6 +36,6 @@ class MistralProvider(BaseProvider):
                     return data["choices"][0]["message"]["content"].strip()
                 else:
                     text = await resp.text()
-                    raise RuntimeError(f"Mistral error {resp.status}: {text}")
+                    raise RuntimeError(f"DeepSeek error {resp.status}: {text}")
 
-manager.register(MistralProvider())
+manager.register(DeepSeekProvider())

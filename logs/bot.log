@@ -113,3 +113,6 @@
 2026-06-10 11:34:50 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
 2026-06-10 11:34:51 | WARNING | YTVerify             | YouTube token refresh failed (invalid_grant): ('invalid_request: Missing required parameter: refresh_token', {'error': 'invalid_request', 'error_description': 'Missing required parameter: refresh_token'})
 2026-06-10 11:34:51 | WARNING | YTVerify             | YouTube operations will be skipped this run. Re-run auth_setup.py to re-authenticate.
+2026-06-10 21:42:31 | INFO    | Main                 | Pillow version: 12.2.0
+2026-06-10 21:42:32 | INFO    | GeminiPool           | Loaded 0 Gemini keys into pool.
+2026-06-10 21:42:35 | WARNING | ViralIntelligenceAgent | ML model not trained yet — using SEO heuristics. Run autonomous_learning_engine after 10+ videos for real predictions.

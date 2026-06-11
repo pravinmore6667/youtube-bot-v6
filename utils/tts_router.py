@@ -297,6 +297,27 @@ def _post_process(audio: AudioSegment) -> AudioSegment:
         pass
     return audio
 
+VOICE_MAP = {
+    "female_hindi": {
+        "edge_tts": "hi-IN-SwaraNeural",
+        "sarvam":   "meera",
+        "azure":    "hi-IN-SwaraNeural",
+        "gtts_lang": "hi",
+    },
+    "male_hindi": {
+        "edge_tts": "hi-IN-MadhurNeural",
+        "sarvam":   "arvind",
+        "azure":    "hi-IN-MadhurNeural",
+        "gtts_lang": "hi",
+    },
+    # Keep English as secondary option
+    "male_deep": {
+        "edge_tts": "en-US-GuyNeural",
+        "gtts_lang": "en",
+    },
+}
+
+
 def _resolve_voice_key(lang: str, gender: str) -> str:
     """Map language+gender to the correct voice_key for ElevenLabs/Kokoro/PlayHT."""
     lang = lang.lower().strip()
@@ -331,6 +352,9 @@ def generate_voice(script_text: str, job_id: str) -> str:
     voice_key = _resolve_voice_key(config.CHANNEL_LANGUAGE, config.TTS_VOICE_GENDER)
     lang = config.CHANNEL_LANGUAGE
 
+    from utils.text_utils import sanitize_for_tts
+    script_text = sanitize_for_tts(script_text)
+
     log.info(f"🎙️ Voice: {voice} | lang: {lang} | voice_key: {voice_key}")
     clean_text = _preprocess_text(script_text, lang)
 
@@ -344,18 +368,26 @@ def generate_voice(script_text: str, job_id: str) -> str:
 
     chunks = _split_text(clean_text)
 
-    # ── Bhashini TTS (Best for Indian Languages) ──────────
-    if BHASHINI_API_KEY and check_provider_health("bhashini"):
+    # ── Sarvam TTS (Best for Indian Languages) ──────────
+    from utils.tts_providers.sarvam_tts import SARVAM_API_KEY, sarvam_tts, SARVAM_VOICES
+    if SARVAM_API_KEY and check_provider_health("sarvam"):
         try:
             tmp_files = []
             all_ok = True
             for i, chunk in enumerate(chunks):
-                tmp = os.path.join(config.OUTPUT_AUDIO, f"_tmp_{job_id}_{i}_bhashini.mp3")
-                b_lang, b_gender = BHASHINI_VOICE_MAP.get(
-                    (lang.lower().strip(), config.TTS_VOICE_GENDER.lower().strip()), ("en", "male")
-                )
-                if not _tts_bhashini(chunk, tmp, language=b_lang, gender=b_gender):
+                tmp = os.path.join(config.OUTPUT_AUDIO, f"_tmp_{job_id}_{i}_sarvam.mp3")
+                s_lang = lang.lower().strip()
+                s_lang = s_lang.split("-")[0]
+                s_gender = config.TTS_VOICE_GENDER.lower().strip()
+                s_voice = SARVAM_VOICES.get(s_lang, {}).get(s_gender, "meera")
+                # map hi to hi-IN
+                lang_code = f"{s_lang}-IN" if s_lang in ("hi", "ta", "te", "bn") else "hi-IN"
+
+                try:
+                    sarvam_tts(chunk, language=lang_code, voice=s_voice, output_path=tmp)
+                except Exception as e:
                     all_ok = False
+                    log.warning(f"Sarvam failed on chunk: {e}")
                     break
                 tmp_files.append(tmp)
 
@@ -371,11 +403,11 @@ def generate_voice(script_text: str, job_id: str) -> str:
                     try: os.remove(f)
                     except: pass
                 _save_cache(output_path, clean_text, voice)
-                record_success("bhashini")
+                record_success("sarvam")
                 return output_path
         except Exception as e:
-            log.warning(f"[TTS Router] Bhashini pipeline failed: {e}")
-            record_failure("bhashini")
+            log.warning(f"[TTS Router] Sarvam pipeline failed: {e}")
+            record_failure("sarvam")
 
     # ── Fish Audio TTS (Indian voices free tier) ──────────
     if FISH_AUDIO_KEY and check_provider_health("fishaudio"):
@@ -437,17 +469,22 @@ def generate_voice(script_text: str, job_id: str) -> str:
         except Exception as e:
             log.warning(f"[TTS Router] ElevenLabs pipeline failed: {e}")
 
-    # ── Kokoro TTS (free, HF_TOKEN, best open-source quality)
-    if HF_TOKEN and check_provider_health("kokoro"):
+    # ── OpenAI TTS (paid fallback, high quality) ────────
+    from utils.tts_providers.openai_tts import OPENAI_API_KEY, openai_tts
+    if OPENAI_API_KEY and check_provider_health("openai"):
         try:
             tmp_files = []
             all_ok = True
             for i, chunk in enumerate(chunks):
                 tmp = os.path.join(config.OUTPUT_AUDIO,
-                                   f"_tmp_{job_id}_{i}_kokoro.mp3")
-                kokoro_voice = KOKORO_VOICES.get(voice_key, KOKORO_DEFAULT_VOICE)
-                if not _tts_kokoro(chunk, tmp, kokoro_voice):
+                                   f"_tmp_{job_id}_{i}_openai.mp3")
+                # map gender to voice
+                o_voice = "nova" if config.TTS_VOICE_GENDER.lower() == "female" else "echo"
+                try:
+                    openai_tts(chunk, voice=o_voice, output_path=tmp)
+                except Exception as e:
                     all_ok = False
+                    log.warning(f"OpenAI TTS failed on chunk: {e}")
                     break
                 tmp_files.append(tmp)
 
@@ -464,39 +501,11 @@ def generate_voice(script_text: str, job_id: str) -> str:
                     try: os.remove(f)
                     except: pass
                 _save_cache(output_path, clean_text, voice)
+                record_success("openai")
                 return output_path
         except Exception as e:
-            log.warning(f"[TTS Router] Kokoro pipeline failed: {e}")
-
-    # ── PlayHT (ultra realistic, 12.5k words free)
-    if PLAYHT_API_KEY and check_provider_health("playht"):
-        try:
-            tmp_files = []
-            all_ok = True
-            for i, chunk in enumerate(chunks):
-                tmp = os.path.join(config.OUTPUT_AUDIO,
-                                   f"_tmp_{job_id}_{i}_playht.mp3")
-                if not _tts_playht(chunk, tmp, voice_key):
-                    all_ok = False
-                    break
-                tmp_files.append(tmp)
-
-            if all_ok and tmp_files:
-                section_pause = AudioSegment.silent(duration=400)
-                combined = AudioSegment.from_mp3(tmp_files[0])
-                for f in tmp_files[1:]:
-                    combined = combined + section_pause + \
-                                AudioSegment.from_mp3(f)
-                combined = _post_process(combined)
-                combined.export(output_path, format="mp3", bitrate="192k",
-                                tags={"title": "AI Voice", "artist": config.CHANNEL_NAME})
-                for f in tmp_files:
-                    try: os.remove(f)
-                    except: pass
-                _save_cache(output_path, clean_text, voice)
-                return output_path
-        except Exception as e:
-            log.warning(f"[TTS Router] PlayHT pipeline failed: {e}")
+            log.warning(f"[TTS Router] OpenAI pipeline failed: {e}")
+            record_failure("openai")
 
     # Try Edge-TTS
     if check_provider_health("edge_tts"):
@@ -539,13 +548,18 @@ def generate_voice(script_text: str, job_id: str) -> str:
         log.info("[TTS Router] Edge-TTS degraded, Switching to gTTS")
 
     # Fallback to gTTS
+    from utils.tts_providers.gtts_provider import gtts_tts
     if check_provider_health("gtts"):
         try:
             tmp_files = []
             for i, chunk in enumerate(chunks):
                 tmp = os.path.join(config.OUTPUT_AUDIO, f"_tmp_{job_id}_{i}_gtts.mp3")
-                tts = gTTS(text=chunk, lang=lang, slow=False)
-                tts.save(tmp)
+                try:
+                    s_lang = lang.lower().strip()
+                    s_lang = s_lang.split("-")[0]
+                    gtts_tts(chunk, lang=s_lang, output_path=tmp)
+                except Exception as e:
+                    raise RuntimeError(f"gTTS generated empty audio: {e}")
 
                 # Check for empty audio
                 if not os.path.exists(tmp) or os.path.getsize(tmp) == 0:

@@ -5,15 +5,18 @@ from router.provider_manager import BaseProvider, manager
 class NvidiaProvider(BaseProvider):
     name = "nvidia"
     tier = 2
-    timeout = 45
+    timeout = 20
 
     def is_configured(self) -> bool:
         return bool(getattr(config, "NVIDIA_API_KEY", None))
 
     async def generate(self, prompt: str, is_fast: bool = False,
                        max_tokens: int = 4096) -> str:
-        model = "meta/llama-3.1-8b-instruct" if is_fast else \
-                "meta/llama-3.1-70b-instruct"
+        models = [
+            "meta/llama-3.1-8b-instruct",
+            "meta/llama-3.1-70b-instruct"
+        ]
+        model = models[0] if is_fast else models[1]
         self.current_model = model
         url = "https://integrate.api.nvidia.com/v1/chat/completions"
         headers = {"Authorization": f"Bearer {config.NVIDIA_API_KEY}",

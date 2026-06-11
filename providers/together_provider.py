@@ -3,24 +3,29 @@ from config import config
 from router.provider_manager import BaseProvider, manager
 from utils.logger import get_logger
 
-log = get_logger("MistralProvider")
+log = get_logger("TogetherProvider")
 
-class MistralProvider(BaseProvider):
-    name = "mistral"
+class TogetherProvider(BaseProvider):
+    name = "together"
     tier = 2
     timeout = 30
 
     def is_configured(self) -> bool:
-        return bool(getattr(config, "MISTRAL_API_KEY", None))
+        return bool(getattr(config, "TOGETHER_API_KEY", None))
 
     async def generate(self, prompt: str, is_fast: bool = False, max_tokens: int = 4096) -> str:
-        url = "https://api.mistral.ai/v1/chat/completions"
+        url = "https://api.together.xyz/v1/chat/completions"
         headers = {
-            "Authorization": f"Bearer {config.MISTRAL_API_KEY}",
+            "Authorization": f"Bearer {config.TOGETHER_API_KEY}",
             "Content-Type": "application/json"
         }
-        models = ["mistral-small-latest", "open-mistral-7b", "mistral-large-latest"]
-        model = models[0] if is_fast else models[2]
+        models = [
+            "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            "Qwen/Qwen2.5-72B-Instruct-Turbo",
+            "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+            "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+        ]
+        model = models[3] if is_fast else models[0]
         self.current_model = model
 
         payload = {
@@ -36,6 +41,6 @@ class MistralProvider(BaseProvider):
                     return data["choices"][0]["message"]["content"].strip()
                 else:
                     text = await resp.text()
-                    raise RuntimeError(f"Mistral error {resp.status}: {text}")
+                    raise RuntimeError(f"Together error {resp.status}: {text}")
 
-manager.register(MistralProvider())
+manager.register(TogetherProvider())
