@@ -30,26 +30,35 @@ def analyze_thumbnail_cv(image_path: str) -> Dict[str, Any]:
         contrast = np.std(gray)
 
         # 2. Face detection using MediaPipe
-        mp_face_detection = mp.solutions.face_detection
         faces_detected = 0
         face_confidence = 0.0
 
-        with mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5) as face_detection:
-            results = face_detection.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            if results.detections:
-                faces_detected = len(results.detections)
-                face_confidence = float(results.detections[0].score[0])
+        try:
+            mp_face_detection = mp.solutions.face_detection
+            with mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5) as face_detection:
+                results = face_detection.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                if results.detections:
+                    faces_detected = len(results.detections)
+                    face_confidence = float(results.detections[0].score[0])
+        except Exception as e:
+            log.warning(f"MediaPipe FaceDetection failed or unavailable: {e}")
+
+        # 3. Motion estimation via Laplacian
+        motion = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        cinematic = min(100, int(40 + float(brightness) * 0.2 + float(contrast) * 0.3))
 
         return {
             "brightness": float(brightness),
             "contrast": float(contrast),
+            "motion": motion,
+            "cinematic_score": cinematic,
             "faces_detected": faces_detected,
             "face_confidence": face_confidence,
             "is_aesthetic": bool(contrast > 40 and 50 < brightness < 200)
         }
     except Exception as e:
         log.warning(f"CV analysis failed: {e}")
-        return {"error": str(e)}
+        return {"cinematic_score": 70, "error": str(e)}
 
 async def generate_intelligent_thumbnail(topic: Dict[str, Any]) -> str:
     """

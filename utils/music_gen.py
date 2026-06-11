@@ -36,59 +36,34 @@ MIN_VALID_BYTES = 50_000
 def generate_background_music(niche: str, duration_hint: int = 60,
                                output_path: str = None) -> str | None:
     """
-    Generate background music via HuggingFace MusicGen.
-    Returns path to valid audio file, or None on failure.
-    Falls back to silent track if all generation fails.
+    Generate background music with fallback chain:
+    1. Pixabay Music
+    2. Jamendo Music
+    3. Silent track (fallback)
     """
-    if not HF_TOKEN:
-        log.warning("HF_TOKEN not set — cannot generate music")
-        return _create_silent_track(duration_hint, output_path)
-
     if output_path is None:
         output_path = f"output/music/_music_{niche}_{int(time.time())}.mp3"
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    prompt = NICHE_MUSIC_PROMPTS.get(
-        niche, NICHE_MUSIC_PROMPTS["default"]
-    )
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    from utils.music_providers.pixabay_music import pixabay_music, PIXABAY_API_KEY
+    from utils.music_providers.jamendo_music import jamendo_music, JAMENDO_CLIENT_ID
 
-    for model in MUSICGEN_MODELS:
+    if PIXABAY_API_KEY:
         try:
-            url = f"https://api-inference.huggingface.co/models/{model}"
-            payload = {
-                "inputs": prompt,
-                "parameters": {
-                    "max_new_tokens": min(duration_hint * 50, 1500),
-                    "do_sample": True,
-                    "guidance_scale": 3.0,
-                },
-            }
-            log.info(f"Generating music via {model} for niche: {niche}")
-            resp = requests.post(url, headers=headers,
-                                 json=payload, timeout=180)
-
-            if resp.status_code == 503:
-                log.warning(f"MusicGen model loading — waiting 15s...")
-                time.sleep(15)
-                resp = requests.post(url, headers=headers,
-                                     json=payload, timeout=180)
-
-            if resp.status_code == 200 and len(resp.content) > MIN_VALID_BYTES:
-                with open(output_path, "wb") as f:
-                    f.write(resp.content)
-                log.info(f"Music generated: {len(resp.content)} bytes "
-                         f"via {model}")
-                return output_path
-            else:
-                log.warning(f"MusicGen {model}: {resp.status_code}, "
-                            f"{len(resp.content)} bytes")
+            log.info("Generating music via Pixabay...")
+            return pixabay_music(niche, output_path)
         except Exception as e:
-            log.warning(f"MusicGen {model} failed: {e}")
-            continue
+            log.warning(f"Pixabay failed: {e}")
 
-    log.warning("All MusicGen models failed — using silent track")
+    if JAMENDO_CLIENT_ID:
+        try:
+            log.info("Generating music via Jamendo...")
+            return jamendo_music(niche, output_path)
+        except Exception as e:
+            log.warning(f"Jamendo failed: {e}")
+
+    log.warning("All music providers failed (or none configured) — using silent track")
     return _create_silent_track(duration_hint, output_path)
 
 

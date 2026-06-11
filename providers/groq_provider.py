@@ -14,7 +14,14 @@ class GroqProvider(BaseProvider):
         return bool(config.GROQ_API_KEY) and not config.GROQ_API_KEY.startswith("your_")
 
     async def generate(self, prompt: str, is_fast: bool = False, max_tokens: int = 4096) -> str:
-        model = "llama-3.1-8b-instant" if is_fast else "llama-3.3-70b-versatile"
+        models = [
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
+            "gemma2-9b-it",
+            "qwen-qwq-32b",
+            "deepseek-r1-distill-llama-70b",
+        ]
+        model = models[0] if is_fast else models[1]
         self.current_model = model
 
         url = "https://api.groq.com/openai/v1/chat/completions"

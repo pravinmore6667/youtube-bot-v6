@@ -21,8 +21,8 @@ class OpenRouterProvider(BaseProvider):
         }
 
         # Select model based on speed requirement
-        model = "google/gemini-flash-1.5" if is_fast else \
-                "deepseek/deepseek-chat-v3-0324:free"
+        model = "google/gemini-2.0-flash-lite-001:free" if is_fast else \
+                "deepseek/deepseek-chat:free"
         self.current_model = model
 
         payload = {

@@ -49,51 +49,31 @@ def get_resample_filter():
         return Image.LANCZOS
 
 
-def _fetch_image_hf_flux(prompt: str, output_path: str = None) -> Image.Image | None:
+def pollinations_generate(prompt: str, width: int = 1280, height: int = 720,
+                           model: str = "flux", seed: int = 42,
+                           output_path: str = None) -> Image.Image | None:
     """
-    Generate image using HuggingFace Inference API.
-    Tries FLUX.1-schnell first, falls back to SDXL, then SD 1.5.
-    Returns PIL Image or None on complete failure.
+    Free AI image generation via Pollinations.AI — no API key required.
+    Models: 'flux' (best quality), 'flux-realism', 'turbo' (fastest).
     """
-    if not HF_TOKEN:
-        log.warning("HF_TOKEN not set — cannot use HuggingFace image generation")
+    try:
+        encoded = urllib.parse.quote(prompt)
+        url = (f"https://image.pollinations.ai/prompt/{encoded}"
+               f"?width={width}&height={height}&seed={seed}"
+               f"&model={model}&nologo=true&enhance=true")
+        log.info(f"  Generating thumbnail via Pollinations.AI ({model})...")
+        r = requests.get(url, timeout=90)
+        r.raise_for_status()
+
+        img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        img = img.resize((1280, 720), get_resample_filter())
+        if output_path:
+            img.save(output_path, "JPEG", quality=95)
+        log.info("  Pollinations thumbnail success")
+        return img
+    except Exception as e:
+        log.warning(f"  Pollinations failed: {e}")
         return None
-
-    HF_MODELS = [
-        "black-forest-labs/FLUX.1-schnell",
-        "stabilityai/stable-diffusion-xl-base-1.0",
-        "runwayml/stable-diffusion-v1-5",
-    ]
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-
-    for model in HF_MODELS:
-        try:
-            url = f"https://api-inference.huggingface.co/models/{model}"
-            payload = {
-                "inputs": prompt,
-                "parameters": {
-                    "width": 1280,
-                    "height": 720,
-                    "num_inference_steps": 4,
-                    "guidance_scale": 0.0,
-                },
-            }
-            log.info(f"  Generating thumbnail via HuggingFace {model}...")
-            r = requests.post(url, headers=headers,
-                              json=payload, timeout=120)
-            if r.status_code == 200 and len(r.content) > 10_000:
-                img = Image.open(io.BytesIO(r.content)).convert("RGB")
-                img = img.resize((1280, 720), get_resample_filter())
-                log.info(f"  HuggingFace thumbnail success via {model}")
-                return img
-            else:
-                log.warning(f"  HF {model} returned {r.status_code} "
-                            f"({len(r.content)} bytes)")
-        except Exception as e:
-            log.warning(f"  HF {model} failed: {e}")
-            continue
-
-    return None
 
 
 def _fetch_image_ideogram(prompt: str) -> Image.Image | None:
@@ -135,17 +115,16 @@ def _fetch_image(prompt: str, seed: int = 42) -> Image.Image | None:
     """
     Image generation with priority fallback chain:
     1. Ideogram (best text rendering, 10/day free)
-    2. HuggingFace FLUX.1-schnell (best quality, needs HF_TOKEN)
-    3. HuggingFace SDXL fallback
-    4. Gradient background (always works, no API needed)
+    2. Pollinations (free, unlimited)
+    3. Gradient background (always works, no API needed)
     """
     # Try Ideogram first if key is available
     img = _fetch_image_ideogram(prompt)
     if img:
         return img
 
-    # Try HuggingFace FLUX chain
-    img = _fetch_image_hf_flux(prompt)
+    # Try Pollinations
+    img = pollinations_generate(prompt, seed=seed)
     if img:
         return img
 

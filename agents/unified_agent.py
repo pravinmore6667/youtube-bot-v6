@@ -83,28 +83,23 @@ RETENTION RULES (strict):
 
 import os
 
-PERPLEXITY_KEY = os.getenv("PERPLEXITY_API_KEY", "")
-
 def research_topic_realtime(topic_title: str) -> str:
-    """Get current facts and statistics for the script topic."""
-    if not PERPLEXITY_KEY:
-        return ""
+    """Uses Tavily for real-time web research."""
     try:
-        import requests
-        resp = requests.post(
-            "https://api.perplexity.ai/chat/completions",
-            headers={"Authorization": f"Bearer {PERPLEXITY_KEY}",
-                     "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.1-sonar-small-128k-online",
-                "messages": [{"role": "user", "content":
-                    f"Give me 5 current facts, statistics, or recent developments "
-                    f"about: {topic_title}. Be concise, one sentence each."}],
-                "max_tokens": 300
-            },
-            timeout=20
-        ).json()
-        return resp["choices"][0]["message"]["content"]
+        from research.tavily_search import tavily_search
+        results = tavily_search(
+            f"5 current facts, statistics, or recent developments about: {topic_title}",
+            max_results=5,
+            search_depth="advanced"
+        )
+        if not results:
+            return ""
+
+        facts = []
+        for r in results:
+            facts.append(r.get("content", ""))
+
+        return "\n".join(facts)
     except Exception:
         return ""
 

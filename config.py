@@ -17,6 +17,10 @@ load_dotenv()
 class Config:
     _warned = False
 
+    DEFAULT_LANGUAGE = "hi"
+    DEFAULT_VOICE_KEY = "female_hindi"
+    DEFAULT_NICHE_LANG = "hi"
+
     # ── AI Providers ─────────────────────────────────────────
     GROQ_API_KEY        = os.getenv("GROQ_API_KEY",        "")
     GEMINI_API_KEY      = os.getenv("GEMINI_API_KEY",      "")
@@ -42,11 +46,14 @@ class Config:
     WHISPER_URL          = os.getenv("WHISPER_URL",          "")
     COMFYUI_URL          = os.getenv("COMFYUI_URL",          "")
 
+    TOGETHER_API_KEY    = os.getenv("TOGETHER_API_KEY",    "")
+    DEEPSEEK_API_KEY    = os.getenv("DEEPSEEK_API_KEY",    "")
+
     # ── PAID PROVIDERS — BLOCKED ──────────────────────────────
-    # Together AI, DeepInfra are not part of the approved
+    # DeepInfra are not part of the approved
     # free architecture. Any configured values are silently ignored.
     # These constants remain for backward-compatibility detection only.
-    _BLOCKED_PROVIDERS = ["TOGETHER_API_KEY", "DEEPINFRA_API_KEY"]
+    _BLOCKED_PROVIDERS = ["DEEPINFRA_API_KEY"]
 
     # ── Media APIs ────────────────────────────────────────────
     PEXELS_API_KEY      = os.getenv("PEXELS_API_KEY",      "")
@@ -60,7 +67,7 @@ class Config:
     # ── Channel ───────────────────────────────────────────────
     CHANNEL_NICHE     = os.getenv("CHANNEL_NICHE",    "technology")
     CHANNEL_NAME      = os.getenv("CHANNEL_NAME",     "AI Channel")
-    CHANNEL_LANGUAGE  = os.getenv("CHANNEL_LANGUAGE", "en")
+    CHANNEL_LANGUAGE  = os.getenv("CHANNEL_LANGUAGE", "hi")
     CHANNEL_TONE      = os.getenv("CHANNEL_TONE",     "engaging and informative")
     TARGET_AUDIENCE   = os.getenv("TARGET_AUDIENCE",  "general audience")
 
@@ -86,7 +93,7 @@ class Config:
     TTS_VOICE_EN_FEMALE = os.getenv("TTS_VOICE_EN_FEMALE", "en-US-JennyNeural")
     TTS_VOICE_HI_MALE   = os.getenv("TTS_VOICE_HI_MALE",   "hi-IN-MadhurNeural")
     TTS_VOICE_HI_FEMALE = os.getenv("TTS_VOICE_HI_FEMALE", "hi-IN-SwaraNeural")
-    TTS_VOICE_GENDER    = os.getenv("TTS_VOICE_GENDER",    "male")
+    TTS_VOICE_GENDER    = os.getenv("TTS_VOICE_GENDER",    "female")
     TTS_RATE            = os.getenv("TTS_RATE",    "+5%")
     TTS_VOLUME          = os.getenv("TTS_VOLUME",  "+0%")
     TTS_PITCH           = os.getenv("TTS_PITCH",   "+0Hz")
@@ -141,7 +148,7 @@ config = Config()
 def _check_blocked_providers():
     """Warn if any blocked paid provider is set in environment."""
     blocked_detected = []
-    blocked_env_keys = ["TOGETHER_API_KEY", "DEEPINFRA_API_KEY"]
+    blocked_env_keys = ["DEEPINFRA_API_KEY"]
     for key in blocked_env_keys:
         val = os.getenv(key, "")
         if val and not val.startswith("your_"):
